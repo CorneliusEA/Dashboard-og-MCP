@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>EarthSurveillance — COCABO Pilot Monitor</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --dark:#0D1117;--dark2:#161B22;--dark3:#1C2330;--dark4:#0A0E14;
+  --green:#2ECC71;--gd:#1A8A4A;
+  --bd:rgba(255,255,255,.08);--bd2:rgba(255,255,255,.05);
+  --muted:#6B7A85;--mid:#9CA3AF;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --amber:#D97706;--red:#DC2626;--blue:#2563EB;--teal:#0891B2;--purple:#7C3AED;
+  --cacao:#8B5E3C;--cacao-light:#C4956A;--earth:#5C4A32;
+}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--dark);font-family:var(--sans);color:#D1D5DB;display:flex;flex-direction:column;}
+
+/* TOP NAV */
+.topbar{background:var(--dark4);border-bottom:1px solid var(--bd);padding:0 24px;display:flex;align-items:center;flex-shrink:0;height:48px;z-index:200;}
+.logo{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--green);letter-spacing:.14em;margin-right:16px;}
+.logo-sep{color:var(--muted);margin-right:16px;font-family:var(--mono);font-size:11px;}
+.logo-context{font-family:var(--mono);font-size:11px;color:var(--cacao-light);letter-spacing:.08em;margin-right:32px;}
+.nav-tabs{display:flex;height:100%;flex:1;}
+.nav-tab{padding:0 16px;font-size:11.5px;font-weight:500;color:var(--muted);cursor:pointer;display:flex;align-items:center;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;user-select:none;}
+.nav-tab:hover{color:#ccc;}
+.nav-tab.active{color:var(--green);border-bottom-color:var(--green);}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:14px;flex-shrink:0;}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.live-label{font-size:10px;font-family:var(--mono);color:var(--green);letter-spacing:.1em;}
+.clock{font-size:11px;font-family:var(--mono);color:var(--muted);}
+.phase-badge{background:rgba(46,204,113,.1);border:1px solid rgba(46,204,113,.3);border-radius:4px;padding:2px 10px;font-size:10px;font-family:var(--mono);color:var(--green);letter-spacing:.08em;}
+
+/* SCREENS */
+.screens{flex:1;overflow:hidden;position:relative;}
+.screen{display:none;padding:20px 24px;height:100%;overflow-y:auto;animation:fadeIn .2s ease;}
+.screen.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* SECTION HEADER */
+.section-label{font-family:var(--mono);font-size:9.5px;color:var(--gd);letter-spacing:.14em;font-weight:500;margin-bottom:6px;text-transform:uppercase;}
+.section-title{font-size:18px;font-weight:600;color:white;letter-spacing:-.01em;margin-bottom:3px;}
+.section-sub{font-size:11.5px;color:var(--muted);margin-bottom:18px;line-height:1.5;}
+
+/* GRIDS */
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.grid-65{display:grid;grid-template-columns:1.8fr 1fr;gap:14px;margin-bottom:14px;}
+.grid-53{display:grid;grid-template-columns:1.6fr 1fr;gap:14px;margin-bottom:14px;}
+
+/* METRIC */
+.metric{background:var(--dark2);border:1px solid var(--bd);border-radius:9px;padding:13px 15px;transition:border-color .2s;}
+.metric:hover{border-color:rgba(255,255,255,.16);}
+.metric-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;}
+.metric-value{font-size:24px;font-weight:600;font-family:var(--mono);color:white;margin-bottom:2px;line-height:1;}
+.metric-sub{font-size:10px;color:var(--muted);}
+.metric.g .metric-value{color:var(--green);}
+.metric.a .metric-value{color:var(--amber);}
+.metric.r .metric-value{color:var(--red);}
+.metric.b .metric-value{color:#60A5FA;}
+.metric.p .metric-value{color:#A78BFA;}
+.metric.c .metric-value{color:var(--cacao-light);}
+.metric-delta{font-size:9px;font-family:var(--mono);margin-top:3px;}
+.metric-delta.up{color:var(--green);}
+.metric-delta.dn{color:var(--red);}
+
+/* CARD */
+.card{background:var(--dark2);border:1px solid var(--bd);border-radius:10px;overflow:hidden;margin-bottom:14px;}
+.card-head{background:var(--dark3);padding:10px 15px;border-bottom:1px solid var(--bd2);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:12.5px;font-weight:600;color:white;}
+.card-sub{font-size:10.5px;color:var(--muted);}
+.card-body{padding:14px;}
+
+/* TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:11.5px;}
+.data-table th{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;padding:7px 10px;border-bottom:1px solid var(--bd);text-align:left;font-weight:500;}
+.data-table td{padding:8px 10px;border-bottom:1px solid var(--bd2);color:#D1D5DB;vertical-align:middle;}
+.data-table tr:last-child td{border-bottom:none;}
+.data-table tr:hover td{background:rgba(255,255,255,.025);}
+
+/* PILL */
+.pill{display:inline-flex;align-items:center;font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;font-family:var(--mono);white-space:nowrap;letter-spacing:.04em;}
+.pill-g{background:#0A2A10;color:#2ECC71;}
+.pill-a{background:#2A1F08;color:#D97706;}
+.pill-r{background:#2A0A08;color:#DC2626;}
+.pill-b{background:#0a1a3a;color:#60A5FA;}
+.pill-p{background:#1a0a3a;color:#A78BFA;}
+.pill-t{background:#0a2a30;color:#22D3EE;}
+.pill-c{background:#2a1808;color:#C4956A;}
+
+/* PROGRESS */
+.prog-wrap{background:rgba(255,255,255,.07);border-radius:3px;height:5px;overflow:hidden;margin-top:4px;}
+.prog-fill{height:100%;border-radius:3px;transition:width .6s ease;}
+.prog-g{background:var(--green);}
+.prog-a{background:var(--amber);}
+.prog-r{background:var(--red);}
+.prog-b{background:#60A5FA;}
+.prog-c{background:var(--cacao-light);}
+
+/* CHART */
+.chart-wrap{position:relative;height:140px;}
+.chart-wrap-sm{position:relative;height:100px;}
+.chart-wrap-lg{position:relative;height:180px;}
+
+/* PHASE TIMELINE */
+.phase-track{display:flex;gap:0;margin-bottom:14px;}
+.phase-block{flex:1;padding:12px 14px;border:1px solid var(--bd);background:var(--dark2);position:relative;}
+.phase-block:first-child{border-radius:8px 0 0 8px;}
+.phase-block:last-child{border-radius:0 8px 8px 0;}
+.phase-block.active-phase{border-color:rgba(46,204,113,.4);background:rgba(46,204,113,.06);}
+.phase-block.done-phase{border-color:rgba(46,204,113,.2);background:rgba(46,204,113,.02);}
+.phase-num{font-family:var(--mono);font-size:8.5px;color:var(--muted);letter-spacing:.1em;margin-bottom:4px;text-transform:uppercase;}
+.phase-name{font-size:12px;font-weight:600;color:white;margin-bottom:3px;}
+.phase-desc{font-size:10px;color:var(--muted);line-height:1.4;}
+.phase-status{position:absolute;top:10px;right:12px;}
+
+/* VALUE STACK */
+.val-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd2);}
+.val-row:last-child{border-bottom:none;}
+.val-label{font-size:11.5px;color:#D1D5DB;}
+.val-label small{display:block;font-size:9.5px;color:var(--muted);margin-top:1px;}
+.val-num{font-family:var(--mono);font-size:13px;font-weight:500;}
+.val-num.g{color:var(--green);}
+.val-num.a{color:var(--amber);}
+.val-num.b{color:#60A5FA;}
+
+/* CERT MATRIX */
+.cert-matrix{display:grid;grid-template-columns:1fr;gap:0;}
+.cert-row{display:flex;align-items:center;gap:0;padding:7px 0;border-bottom:1px solid var(--bd2);font-size:11px;}
+.cert-row:last-child{border-bottom:none;}
+.cert-indicator{font-size:12px;width:22px;text-align:center;flex-shrink:0;}
+.cert-name{color:white;font-weight:500;min-width:170px;font-size:11.5px;}
+.cert-method{color:var(--muted);flex:1;font-size:10px;}
+.cert-dots{display:flex;gap:5px;min-width:180px;justify-content:flex-end;}
+.cert-dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;font-family:var(--mono);}
+.cd-y{background:#0A2A10;color:#2ECC71;}
+.cd-n{background:rgba(255,255,255,.04);color:var(--muted);}
+.cd-p{background:#2A1F08;color:#D97706;}
+.cert-label-row{display:flex;gap:5px;min-width:180px;justify-content:flex-end;margin-bottom:2px;}
+.cert-cert-label{width:20px;text-align:center;font-size:8px;font-family:var(--mono);color:var(--muted);letter-spacing:.04em;}
+
+/* COMMUNITY TABLE */
+.community-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd2);cursor:pointer;transition:background .15s;}
+.community-row:last-child{border-bottom:none;}
+.community-row:hover{background:rgba(255,255,255,.025);margin:0 -14px;padding:8px 14px;}
+.comm-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.comm-name{font-size:12px;font-weight:500;color:white;min-width:130px;}
+.comm-farmers{font-family:var(--mono);font-size:11px;color:var(--muted);min-width:60px;}
+.comm-ha{font-family:var(--mono);font-size:11px;min-width:70px;}
+.comm-eudr{min-width:70px;}
+.comm-carbon{font-family:var(--mono);font-size:11px;color:var(--green);}
+
+/* ALERT FEED */
+.alert-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--bd2);}
+.alert-row:last-child{border-bottom:none;}
+.alert-icon{font-size:14px;flex-shrink:0;margin-top:1px;}
+.alert-text{flex:1;}
+.alert-title{font-size:12px;font-weight:500;color:white;margin-bottom:2px;}
+.alert-meta{font-size:10.5px;color:var(--muted);}
+.alert-time{font-size:10px;font-family:var(--mono);color:var(--muted);flex-shrink:0;}
+
+/* E-LEDGER FLOW */
+.flow-steps{display:flex;align-items:stretch;gap:0;margin:10px 0;}
+.flow-step{flex:1;text-align:center;padding:10px 6px;background:var(--dark3);position:relative;}
+.flow-step:not(:last-child)::after{content:'›';position:absolute;right:-8px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:16px;z-index:1;}
+.flow-step:first-child{border-radius:7px 0 0 7px;}
+.flow-step:last-child{border-radius:0 7px 7px 0;}
+.flow-step.active-step{background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.2);}
+.flow-icon{font-size:16px;margin-bottom:4px;}
+.flow-label{font-size:10px;font-weight:600;color:white;margin-bottom:2px;}
+.flow-sub{font-size:9px;color:var(--muted);line-height:1.3;}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--dark3);border:1px solid var(--bd);border-radius:8px;padding:10px 18px;font-size:12px;color:white;z-index:400;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
+
+/* BIG VALUE HIGHLIGHT */
+.highlight-box{background:linear-gradient(135deg,rgba(46,204,113,.08),rgba(46,204,113,.02));border:1px solid rgba(46,204,113,.2);border-radius:9px;padding:14px 16px;text-align:center;}
+.hb-value{font-size:32px;font-weight:600;font-family:var(--mono);color:var(--green);line-height:1;}
+.hb-label{font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.08em;font-family:var(--mono);text-transform:uppercase;}
+.hb-sub{font-size:11px;color:#9CA3AF;margin-top:6px;}
+
+/* TICK STRIP */
+.tick-strip{display:flex;gap:20px;font-family:var(--mono);font-size:10px;color:var(--muted);padding:6px 0 14px;border-bottom:1px solid var(--bd2);margin-bottom:14px;overflow:hidden;}
+.tick-item{display:flex;gap:5px;flex-shrink:0;}
+.tick-label{color:var(--muted);}
+.tick-val{color:white;}
+.tick-val.up{color:var(--green);}
+
+/* DUAL COLS INSIDE CARD */
+.in-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+/* MINI STAT */
+.mini-stat{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--bd2);}
+.mini-stat:last-child{border-bottom:none;}
+.ms-icon{font-size:15px;width:24px;text-align:center;flex-shrink:0;}
+.ms-label{font-size:11.5px;color:#D1D5DB;flex:1;}
+.ms-val{font-family:var(--mono);font-size:12px;font-weight:500;color:white;}
+.ms-val.g{color:var(--green);}
+
+/* CARBON VALUE MODEL */
+.co2-bar{height:18px;border-radius:4px;background:linear-gradient(90deg,var(--green),#1A8A4A);margin:6px 0;position:relative;display:flex;align-items:center;padding:0 8px;}
+.co2-emit{height:18px;border-radius:4px;background:rgba(220,38,38,.4);margin:6px 0;display:flex;align-items:center;padding:0 8px;}
+.co2-net{height:18px;border-radius:4px;background:linear-gradient(90deg,#0A2A10,rgba(46,204,113,.3));margin:6px 0 0;display:flex;align-items:center;padding:0 8px;}
+.co2-label-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;}
+.co2-text{font-size:10px;color:#D1D5DB;}
+.co2-num{font-family:var(--mono);font-size:11px;font-weight:500;}
+
+/* PILOT INVESTMENT */
+.inv-row{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:1px solid var(--bd2);font-size:12px;}
+.inv-row:last-child{border-bottom:none;}
+.inv-phase{color:white;font-weight:500;}
+.inv-detail{color:var(--muted);font-size:10.5px;flex:1;margin:0 12px;}
+.inv-cost{font-family:var(--mono);font-weight:600;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">EARTH SURVEILLANCE</span>
+  <span class="logo-sep">/</span>
+  <span class="logo-context">COCABO · Bocas del Toro, Panama</span>
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="showScreen('overview')">Overview</div>
+    <div class="nav-tab" onclick="showScreen('eudr')">EUDR Compliance</div>
+    <div class="nav-tab" onclick="showScreen('carbon')">Carbon Reserve</div>
+    <div class="nav-tab" onclick="showScreen('eledger')">E-Ledger</div>
+    <div class="nav-tab" onclick="showScreen('biodiversity')">Biodiversity</div>
+    <div class="nav-tab" onclick="showScreen('finance')">Finance</div>
+  </div>
+  <div class="topbar-right">
+    <span class="phase-badge">PHASE 1 · PRE-DISCOVERY</span>
+    <div class="live-dot"></div>
+    <span class="live-label">LIVE</span>
+    <span class="clock" id="clock">--:--:--</span>
+  </div>
+</div>
+
+<div class="screens">
+
+<!-- ==================== OVERVIEW ==================== -->
+<div class="screen active" id="screen-overview">
+  <div class="tick-strip">
+    <span class="tick-item"><span class="tick-label">CO₂ RESERVE</span><span class="tick-val up">1.88M tCO₂e</span></span>
+    <span class="tick-item"><span class="tick-label">SEQ/YR</span><span class="tick-val up">21–42k tCO₂e</span></span>
+    <span class="tick-item"><span class="tick-label">AREA</span><span class="tick-val">4,394 ha</span></span>
+    <span class="tick-item"><span class="tick-label">FARMERS</span><span class="tick-val">1,438</span></span>
+    <span class="tick-item"><span class="tick-label">COMMUNITIES</span><span class="tick-val">60</span></span>
+    <span class="tick-item"><span class="tick-label">BIRD SPP.</span><span class="tick-val up">234</span></span>
+    <span class="tick-item"><span class="tick-label">REVENUE/MO</span><span class="tick-val">$120k USD</span></span>
+    <span class="tick-item"><span class="tick-label">CARBON CREDITS ISSUED</span><span class="tick-val" style="color:var(--red)">$0</span></span>
+    <span class="tick-item"><span class="tick-label">EUDR STATUS</span><span class="tick-val" style="color:var(--amber)">PENDING</span></span>
+    <span class="tick-item"><span class="tick-label">FOUNDED</span><span class="tick-val">1952</span></span>
+  </div>
+
+  <div class="section-label">PILOT DASHBOARD · APRIL 2026</div>
+  <div class="section-title">COCABO Natural Capital Monitor</div>
+  <div class="section-sub">1,438 Ngöbe + Naso smallholder farmers · 4,394 ha certified organic cacao agroforestry · UNESCO La Amistad buffer zone</div>
+
+  <!-- Phase timeline -->
+  <div class="phase-track">
+    <div class="phase-block active-phase">
+      <div class="phase-num">Phase 1 · Month 1–2 · NOW</div>
+      <div class="phase-name">Discovery + EUDR Baseline</div>
+      <div class="phase-desc">Satellite pre-discovery · GPS polygon collection · Auto EUDR DDS · First E-Ledger entries</div>
+      <div class="phase-status"><span class="pill pill-g">ACTIVE</span></div>
+    </div>
+    <div class="phase-block">
+      <div class="phase-num">Phase 2 · Month 3–4</div>
+      <div class="phase-name">Carbon Baseline + E-Ledger</div>
+      <div class="phase-desc">Biomass model · Carbon stock per community · Shipment certificates · CSRD scope 3</div>
+      <div class="phase-status"><span class="pill pill-a">UPCOMING</span></div>
+    </div>
+    <div class="phase-block">
+      <div class="phase-num">Phase 3 · Month 5–6</div>
+      <div class="phase-name">Carbon Credit + Board Package</div>
+      <div class="phase-desc">Verra VCS PDD · Annual credit potential · EBAN biodiversity layer · DFI finance package</div>
+      <div class="phase-status"><span class="pill pill-c">PLANNED</span></div>
+    </div>
+  </div>
+
+  <div class="grid-4">
+    <div class="metric g">
+      <div class="metric-label">Carbon Reserve</div>
+      <div class="metric-value">1.88M</div>
+      <div class="metric-sub">tCO₂e stored · 117 tC/ha avg</div>
+      <div class="metric-delta up">↑ €0 monetised today</div>
+    </div>
+    <div class="metric a">
+      <div class="metric-label">EUDR Status</div>
+      <div class="metric-value">PENDING</div>
+      <div class="metric-sub">0 / 60 communities compliant</div>
+      <div class="metric-delta dn">↑ Phase 1 closes this gap</div>
+    </div>
+    <div class="metric b">
+      <div class="metric-label">Annual Sequestration</div>
+      <div class="metric-value">~31k</div>
+      <div class="metric-sub">tCO₂e/yr · mid estimate</div>
+      <div class="metric-delta up">↑ $315k–$1M credit potential</div>
+    </div>
+    <div class="metric c">
+      <div class="metric-label">E-Ledger per kg Cacao</div>
+      <div class="metric-value">+1.72</div>
+      <div class="metric-sub">kg CO₂e seq. per kg produced</div>
+      <div class="metric-delta up">↑ Net sink after shipping</div>
+    </div>
+  </div>
+
+  <div class="grid-65">
+    <div>
+      <!-- Value gaps -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Four Value Gaps — All Solvable with One Platform</span>
+          <span class="card-sub">ES closes each gap in sequence</span>
+        </div>
+        <div class="card-body">
+          <div class="val-row">
+            <div class="val-label">EUDR Compliance Gap<small>Stella Bernrain GPS-only — no satellite baseline, no auto DDS</small></div>
+            <div><span class="pill pill-a">HIGH RISK</span></div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">Carbon Invisible<small>1.88M tCO₂e stored, zero credits ever issued</small></div>
+            <div><span class="pill pill-r">ZERO REVENUE</span></div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">No Nordic DFI Relationship<small>NDF, IFU, Nordic pension funds not yet connected</small></div>
+            <div><span class="pill pill-a">UNTAPPED</span></div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">EU Buyer Carbon Data Missing<small>CSRD scope 3 obligations NOW — no verified embedded CO₂/kg</small></div>
+            <div><span class="pill pill-r">URGENT</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Certifications current -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Current Certification Status</span>
+          <span class="card-sub">Existing + gaps</span>
+        </div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+            <div style="background:rgba(46,204,113,.06);border:1px solid rgba(46,204,113,.2);border-radius:7px;padding:10px;text-align:center;">
+              <div style="font-size:20px;margin-bottom:4px;">🌿</div>
+              <div style="font-size:11px;font-weight:600;color:white;">BioSuisse</div>
+              <div style="margin-top:4px;"><span class="pill pill-g">CERTIFIED</span></div>
+            </div>
+            <div style="background:rgba(46,204,113,.06);border:1px solid rgba(46,204,113,.2);border-radius:7px;padding:10px;text-align:center;">
+              <div style="font-size:20px;margin-bottom:4px;">🇪🇺</div>
+              <div style="font-size:11px;font-weight:600;color:white;">EU Organic (NOP)</div>
+              <div style="margin-top:4px;"><span class="pill pill-g">CERTIFIED</span></div>
+            </div>
+            <div style="background:rgba(46,204,113,.06);border:1px solid rgba(46,204,113,.2);border-radius:7px;padding:10px;text-align:center;">
+              <div style="font-size:20px;margin-bottom:4px;">⚖️</div>
+              <div style="font-size:11px;font-weight:600;color:white;">FLO Fairtrade</div>
+              <div style="margin-top:4px;"><span class="pill pill-g">CERTIFIED</span></div>
+            </div>
+            <div style="background:rgba(217,119,6,.05);border:1px solid rgba(217,119,6,.2);border-radius:7px;padding:10px;text-align:center;">
+              <div style="font-size:20px;margin-bottom:4px;">📋</div>
+              <div style="font-size:11px;font-weight:600;color:white;">EUDR</div>
+              <div style="margin-top:4px;"><span class="pill pill-a">PHASE 1</span></div>
+            </div>
+            <div style="background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.15);border-radius:7px;padding:10px;text-align:center;">
+              <div style="font-size:20px;margin-bottom:4px;">💰</div>
+              <div style="font-size:11px;font-weight:600;color:white;">Carbon Credits</div>
+              <div style="margin-top:4px;"><span class="pill pill-r">NONE YET</span></div>
+            </div>
+            <div style="background:rgba(37,99,235,.04);border:1px solid rgba(37,99,235,.15);border-radius:7px;padding:10px;text-align:center;">
+              <div style="font-size:20px;margin-bottom:4px;">🏦</div>
+              <div style="font-size:11px;font-weight:600;color:white;">Nordic DFI</div>
+              <div style="margin-top:4px;"><span class="pill pill-b">PHASE 3</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <!-- Key numbers -->
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-head"><span class="card-title">Pilot Investment vs. Potential</span></div>
+        <div class="card-body">
+          <div class="highlight-box" style="margin-bottom:10px;">
+            <div class="hb-value">0.4%</div>
+            <div class="hb-label">of annual revenue</div>
+            <div class="hb-sub">EUR 6,000/yr pilot · $120k/mo cooperative</div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">Phase 1<small>Free · Pre-Discovery</small></div>
+            <div class="val-num g">€0</div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">Phase 2–3<small>50% pilot discount</small></div>
+            <div class="val-num b">€6,000/yr</div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">Carbon credit potential<small>Verra VCS annual</small></div>
+            <div class="val-num g">$315k–$1M</div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">EUDR compliance value<small>Market access protection</small></div>
+            <div class="val-num g">CRITICAL</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Next actions -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Next Actions</span></div>
+        <div class="card-body">
+          <div class="alert-row">
+            <div class="alert-icon">1️⃣</div>
+            <div class="alert-text">
+              <div class="alert-title">Meet COCABO Board</div>
+              <div class="alert-meta">Manuel Palacio · Present ES platform</div>
+            </div>
+          </div>
+          <div class="alert-row">
+            <div class="alert-icon">2️⃣</div>
+            <div class="alert-text">
+              <div class="alert-title">Launch Phase 1 Pre-Discovery</div>
+              <div class="alert-meta">Free · No obligation · Results in 4 weeks</div>
+            </div>
+          </div>
+          <div class="alert-row">
+            <div class="alert-icon">3️⃣</div>
+            <div class="alert-text">
+              <div class="alert-title">Commission Carbon Baseline</div>
+              <div class="alert-meta">Verra VCS credit project registration</div>
+            </div>
+          </div>
+          <div class="alert-row">
+            <div class="alert-icon">4️⃣</div>
+            <div class="alert-text">
+              <div class="alert-title">Connect Nordic DFI Network</div>
+              <div class="alert-meta">NDF / IFU / Nordic pension funds</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== EUDR COMPLIANCE ==================== -->
+<div class="screen" id="screen-eudr">
+  <div class="section-label">EUDR COMPLIANCE MODULE</div>
+  <div class="section-title">EU Deforestation Regulation Status</div>
+  <div class="section-sub">Phase 1 deliverable: Full EUDR compliance package for all 1,438 COCABO farms across 60 communities</div>
+
+  <div class="grid-4">
+    <div class="metric a">
+      <div class="metric-label">Communities Compliant</div>
+      <div class="metric-value">0 / 60</div>
+      <div class="metric-sub">GPS polygons + DDS pending</div>
+    </div>
+    <div class="metric a">
+      <div class="metric-label">Farm Polygons Collected</div>
+      <div class="metric-value">0 / 1,438</div>
+      <div class="metric-sub">Gaian app collection pending</div>
+    </div>
+    <div class="metric g">
+      <div class="metric-label">Deforestation Baseline</div>
+      <div class="metric-value">2020</div>
+      <div class="metric-sub">Sentinel-1/2 · GFW · Phase 1</div>
+    </div>
+    <div class="metric b">
+      <div class="metric-label">Area to Cover</div>
+      <div class="metric-value">4,394</div>
+      <div class="metric-sub">hectares · satellite pre-discovery</div>
+    </div>
+  </div>
+
+  <div class="grid-65">
+    <div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">EUDR Compliance Pipeline — Phase 1</span>
+          <span class="card-sub">60 communities · 4 deliverables</span>
+        </div>
+        <div class="card-body">
+          <div class="flow-steps" style="margin-bottom:14px;">
+            <div class="flow-step active-step">
+              <div class="flow-icon">🛰️</div>
+              <div class="flow-label">Satellite Pre-Discovery</div>
+              <div class="flow-sub">Sentinel-1/2 all 4,394 ha · deforestation baseline 2020</div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-icon">📍</div>
+              <div class="flow-label">GPS Polygon Collection</div>
+              <div class="flow-sub">60 communities · Gaian app · field operators</div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-icon">🤖</div>
+              <div class="flow-label">Gaian AI Analysis</div>
+              <div class="flow-sub">Deforestation risk flags · NDVI analysis · boundary verification</div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-icon">📄</div>
+              <div class="flow-label">Auto Due Diligence Statement</div>
+              <div class="flow-sub">Per community · per shipment · EUDR Art. 4 compliant</div>
+            </div>
+          </div>
+
+          <!-- Community list -->
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;padding:7px 0 4px;border-bottom:1px solid var(--bd);">
+            <div style="display:flex;gap:10px;">
+              <span style="min-width:130px;">Community</span>
+              <span style="min-width:60px;">Farmers</span>
+              <span style="min-width:70px;">Area (ha)</span>
+              <span style="min-width:70px;">GPS Status</span>
+              <span>DDS Status</span>
+            </div>
+          </div>
+          <div id="community-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-head"><span class="card-title">What EUDR Compliance Unlocks</span></div>
+        <div class="card-body">
+          <div class="mini-stat">
+            <div class="ms-icon">🇪🇺</div>
+            <div class="ms-label">EU market access protected</div>
+            <div class="ms-val g">CRITICAL</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">🏪</div>
+            <div class="ms-label">Stella Bernrain supply chain</div>
+            <div class="ms-val g">SECURED</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">📦</div>
+            <div class="ms-label">Auto DDS per shipment</div>
+            <div class="ms-val">~60 docs</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">⏱️</div>
+            <div class="ms-label">Delivery timeline</div>
+            <div class="ms-val">4 weeks</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">Current Compliance Risk</span></div>
+        <div class="card-body">
+          <div style="background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);border-radius:7px;padding:12px;margin-bottom:10px;">
+            <div style="font-size:11px;font-weight:600;color:#F87171;margin-bottom:6px;">⚠️ Market Access at Risk</div>
+            <div style="font-size:10.5px;color:var(--muted);line-height:1.5;">Stella Bernrain currently funds GPS-only collection via Abunda+. No satellite-verified deforestation baseline exists. No auto-generated Due Diligence Statements. EU regulation enforcement escalating in 2025–2026.</div>
+          </div>
+          <div style="background:rgba(46,204,113,.05);border:1px solid rgba(46,204,113,.15);border-radius:7px;padding:12px;">
+            <div style="font-size:11px;font-weight:600;color:var(--green);margin-bottom:6px;">✓ Phase 1 Solution</div>
+            <div style="font-size:10.5px;color:var(--muted);line-height:1.5;">Sentinel-2 satellite verification + deforestation baseline 2020 + auto DDS generation per community. Upgrades GPS-only to full EUDR Article 4 compliance in 4 weeks.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== CARBON RESERVE ==================== -->
+<div class="screen" id="screen-carbon">
+  <div class="section-label">CARBON RESERVE MODULE</div>
+  <div class="section-title">Carbon Stock + Sequestration Model</div>
+  <div class="section-sub">Somarriba et al. 2013 methodology · Sentinel-1/2 SAR fusion · 4,394 ha certified organic agroforestry</div>
+
+  <div class="grid-4">
+    <div class="metric g">
+      <div class="metric-label">Carbon Reserve</div>
+      <div class="metric-value">1.88M</div>
+      <div class="metric-sub">tCO₂e stored · 117 tC/ha avg</div>
+    </div>
+    <div class="metric b">
+      <div class="metric-label">Annual Sequestration</div>
+      <div class="metric-value">31k</div>
+      <div class="metric-sub">tCO₂e/yr · mid (21–42k range)</div>
+    </div>
+    <div class="metric g">
+      <div class="metric-label">Tradeable Potential (low)</div>
+      <div class="metric-value">$315k</div>
+      <div class="metric-sub">/yr · $15/t VCM floor</div>
+    </div>
+    <div class="metric p">
+      <div class="metric-label">Tradeable Potential (high)</div>
+      <div class="metric-value">$1M+</div>
+      <div class="metric-sub">/yr · $25/t VCM ceiling</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Carbon Value — Three Market Scenarios</span>
+          <span class="card-sub">Annual sequestration only (not reserve)</span>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap-lg">
+            <canvas id="carbonChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">Carbon Stock by Price Scenario (Full Reserve)</span></div>
+        <div class="card-body">
+          <div class="val-row">
+            <div class="val-label">VCM voluntary · $15/t<small>Current floor for nature-based credits</small></div>
+            <div class="val-num g">$28.2M</div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">CSRD offset market · €15/t<small>EU corporate sustainability reporting</small></div>
+            <div class="val-num g">€28.2M</div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">EU ETS proxy · $60/t<small>CBAM 2028+ benchmark</small></div>
+            <div class="val-num b">$112.8M</div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">Annualised sequestration (low)<small>21,000 tCO₂e/yr · $15/t</small></div>
+            <div class="val-num g">$315k/yr</div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">Annualised sequestration (high)<small>42,000 tCO₂e/yr · $25/t</small></div>
+            <div class="val-num p">$1.05M/yr</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-head"><span class="card-title">Carbon Model Methodology</span></div>
+        <div class="card-body">
+          <div class="mini-stat">
+            <div class="ms-icon">📡</div>
+            <div class="ms-label">Sentinel-1/2 SAR fusion</div>
+            <div class="ms-val g">ACTIVE</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">📊</div>
+            <div class="ms-label">Somarriba et al. 2013</div>
+            <div class="ms-val">Peer-reviewed</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">🌳</div>
+            <div class="ms-label">Allometric biomass model</div>
+            <div class="ms-val">117 tC/ha</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">📅</div>
+            <div class="ms-label">Multi-year time series</div>
+            <div class="ms-val">NDVI/EVI</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">🌱</div>
+            <div class="ms-label">Verra VCS methodology</div>
+            <div class="ms-val a">Phase 3</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-head"><span class="card-title">Carbon Credit Pathway</span></div>
+        <div class="card-body">
+          <div style="display:flex;flex-direction:column;gap:0;">
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd2);">
+              <div style="width:20px;height:20px;border-radius:50%;background:rgba(46,204,113,.15);border:1px solid rgba(46,204,113,.3);display:flex;align-items:center;justify-content:center;font-size:9px;font-family:var(--mono);color:var(--green);flex-shrink:0;">1</div>
+              <div>
+                <div style="font-size:11.5px;color:white;font-weight:500;">Phase 2: Carbon baseline (Somarriba methodology)</div>
+                <div style="font-size:10px;color:var(--muted);">Month 3–4 · SAR + allometric model · per community</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd2);">
+              <div style="width:20px;height:20px;border-radius:50%;background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.25);display:flex;align-items:center;justify-content:center;font-size:9px;font-family:var(--mono);color:#60A5FA;flex-shrink:0;">2</div>
+              <div>
+                <div style="font-size:11.5px;color:white;font-weight:500;">Phase 3: Verra VCS PDD + methodology selection</div>
+                <div style="font-size:10px;color:var(--muted);">Month 5–6 · Project Design Document · registration start</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;">
+              <div style="width:20px;height:20px;border-radius:50%;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.25);display:flex;align-items:center;justify-content:center;font-size:9px;font-family:var(--mono);color:#A78BFA;flex-shrink:0;">3</div>
+              <div>
+                <div style="font-size:11.5px;color:white;font-weight:500;">Post-pilot: First credit issuance + market listing</div>
+                <div style="font-size:10px;color:var(--muted);">Gold Standard / VCS marketplace · $315k–$1M/yr</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">COCABO Carbon vs. Annual Revenue</span></div>
+        <div class="card-body">
+          <div class="chart-wrap">
+            <canvas id="revenueChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== E-LEDGER ==================== -->
+<div class="screen" id="screen-eledger">
+  <div class="section-label">E-LEDGER MODULE</div>
+  <div class="section-title">Carbon Inside — Farm to EU Buyer</div>
+  <div class="section-sub">Each shipping lot carries a verified embedded carbon certificate · CSRD scope 3 ready · Blockchain immutable</div>
+
+  <div class="grid-4">
+    <div class="metric g">
+      <div class="metric-label">CO₂e Seq. per kg Cacao</div>
+      <div class="metric-value">+1.72</div>
+      <div class="metric-sub">kg CO₂e at 250 kg/ha yield</div>
+    </div>
+    <div class="metric r">
+      <div class="metric-label">Process + Shipping Emissions</div>
+      <div class="metric-value">-0.20</div>
+      <div class="metric-sub">kg CO₂e scope 1+3 per kg</div>
+    </div>
+    <div class="metric g">
+      <div class="metric-label">Net Carbon per kg (shipped EU)</div>
+      <div class="metric-value">+1.52</div>
+      <div class="metric-sub">kg CO₂e · verified net sink</div>
+    </div>
+    <div class="metric b">
+      <div class="metric-label">Annual Export (400t)</div>
+      <div class="metric-value">608</div>
+      <div class="metric-sub">tCO₂e available for buyer accounting</div>
+    </div>
+  </div>
+
+  <div class="grid-65">
+    <div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">E-Ledger Certification Flow</span>
+          <span class="card-sub">Farm polygon → EU buyer CSRD report</span>
+        </div>
+        <div class="card-body">
+          <div class="flow-steps" style="margin-bottom:20px;">
+            <div class="flow-step active-step">
+              <div class="flow-icon">🗺️</div>
+              <div class="flow-label">Farm Polygon + Carbon Model</div>
+              <div class="flow-sub">1,438 farms · SAR biomass · per ha stock</div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-icon">📒</div>
+              <div class="flow-label">E-Ledger Entry</div>
+              <div class="flow-sub">Blockchain record · date · analyst level · immutable</div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-icon">📦</div>
+              <div class="flow-label">QR Code on Sack</div>
+              <div class="flow-sub">Embedded per lot · full chain on scan</div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-icon">🏭</div>
+              <div class="flow-label">EU Buyer CO₂ Cert</div>
+              <div class="flow-sub">kg CO₂e per kg cacao · verified origin</div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-icon">📊</div>
+              <div class="flow-label">CSRD Scope 3</div>
+              <div class="flow-sub">Automatic scope 3 input for buyer ESG reports</div>
+            </div>
+          </div>
+
+          <!-- Carbon per kg visual -->
+          <div style="margin-top:4px;">
+            <div class="co2-label-row"><span class="co2-text">Sequestered per kg cacao (117 tC/ha · 250 kg/ha yield)</span><span class="co2-num" style="color:var(--green);">+1.72 kg CO₂e</span></div>
+            <div class="co2-bar" style="width:100%;"><span style="font-size:9px;font-weight:700;color:rgba(255,255,255,.9);font-family:var(--mono);">SEQUESTERED</span></div>
+            <div class="co2-label-row" style="margin-top:8px;"><span class="co2-text">Process + shipping emissions (scope 1+3 estimate)</span><span class="co2-num" style="color:var(--red);">−0.20 kg CO₂e</span></div>
+            <div class="co2-emit" style="width:12%;"><span style="font-size:9px;font-weight:700;color:rgba(255,255,255,.9);font-family:var(--mono);">EMIT</span></div>
+            <div style="height:1px;background:var(--bd);margin:10px 0;"></div>
+            <div class="co2-label-row"><span class="co2-text" style="font-weight:600;color:white;">Net carbon per kg shipped to EU</span><span class="co2-num" style="color:var(--green);font-size:14px;">+1.52 kg CO₂e</span></div>
+            <div class="co2-net" style="width:88%;"><span style="font-size:9px;font-weight:700;color:rgba(255,255,255,.9);font-family:var(--mono);">VERIFIED NET SINK</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-head"><span class="card-title">EU Buyer Value (608 tCO₂e / year)</span></div>
+        <div class="card-body">
+          <div class="highlight-box" style="margin-bottom:10px;background:linear-gradient(135deg,rgba(46,204,113,.08),rgba(46,204,113,.02));">
+            <div class="hb-value">608 t</div>
+            <div class="hb-label">CO₂e certified per year · 400t export</div>
+            <div class="hb-sub">Full production deployment multiplies this significantly</div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">CSRD offset market<small>€15/t · corporate sustainability</small></div>
+            <div class="val-num g">€9,120/yr</div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">EU ETS proxy<small>€60/t · CBAM 2028+ benchmark</small></div>
+            <div class="val-num b">€36,480/yr</div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">Premium VCM<small>$25/t · nature-based premium</small></div>
+            <div class="val-num p">$15,200/yr</div>
+          </div>
+          <div style="background:rgba(255,255,255,.03);border-radius:6px;padding:10px;margin-top:8px;">
+            <div style="font-size:10px;color:var(--muted);line-height:1.5;">⚡ Based on 400t export only. COCABO annual production significantly higher — full E-Ledger deployment multiplies these figures.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">EU Buyer CSRD Obligations</span></div>
+        <div class="card-body">
+          <div class="mini-stat">
+            <div class="ms-icon">🇨🇭</div>
+            <div class="ms-label">Stella Bernrain Switzerland</div>
+            <div class="ms-val a">NOW</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">🇫🇷</div>
+            <div class="ms-label">French clients (scope 3)</div>
+            <div class="ms-val a">NOW</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">🇩🇪</div>
+            <div class="ms-label">German clients (scope 3)</div>
+            <div class="ms-val a">NOW</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">📋</div>
+            <div class="ms-label">Verified embedded CO₂/kg</div>
+            <div class="ms-val r">Missing</div>
+          </div>
+          <div style="margin-top:10px;background:rgba(46,204,113,.05);border:1px solid rgba(46,204,113,.15);border-radius:6px;padding:10px;">
+            <div style="font-size:10.5px;color:var(--green);font-weight:500;margin-bottom:3px;">E-Ledger closes this gap</div>
+            <div style="font-size:10px;color:var(--muted);line-height:1.4;">Every buyer receives a verified CO₂ certificate per kg of COCABO cacao — making COCABO the only supplier offering net-negative scope 3 reporting.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== BIODIVERSITY ==================== -->
+<div class="screen" id="screen-biodiversity">
+  <div class="section-label">BIODIVERSITY MODULE</div>
+  <div class="section-title">COCABO as a Biodiversity Reserve</div>
+  <div class="section-sub">234 landbird species documented on COCABO farms · Smithsonian STRI + COCABO, 2007 · Peer-reviewed evidence</div>
+
+  <div class="grid-4">
+    <div class="metric g">
+      <div class="metric-label">Total Bird Species</div>
+      <div class="metric-value">234</div>
+      <div class="metric-sub">Smithsonian STRI · 2007 survey</div>
+    </div>
+    <div class="metric b">
+      <div class="metric-label">In Cacao + Forest</div>
+      <div class="metric-value">102</div>
+      <div class="metric-sub">both habitat types</div>
+    </div>
+    <div class="metric p">
+      <div class="metric-label">Cacao-Only Species</div>
+      <div class="metric-value">86</div>
+      <div class="metric-sub">only in cacao farms</div>
+    </div>
+    <div class="metric a">
+      <div class="metric-label">Migratory (Cacao Only)</div>
+      <div class="metric-value">18/27</div>
+      <div class="metric-sub">migratory spp. · cacao exclusive</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Bird Species Distribution</span>
+          <span class="card-sub">Smithsonian STRI + COCABO, 2007</span>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap-lg">
+            <canvas id="bioChart"></canvas>
+          </div>
+          <div style="margin-top:14px;background:rgba(46,204,113,.04);border:1px solid rgba(46,204,113,.12);border-radius:7px;padding:10px;">
+            <div style="font-size:11px;font-weight:600;color:white;margin-bottom:4px;">Key Finding</div>
+            <div style="font-size:10.5px;color:var(--muted);line-height:1.5;">Canopy cover is the <strong style="color:white;">primary driver</strong> of bird diversity. COCABO's certified organic shade-grown agroforestry management directly produces this outcome — making biodiversity a verifiable, manageable asset.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">UNESCO La Amistad Context</span></div>
+        <div class="card-body">
+          <div class="mini-stat">
+            <div class="ms-icon">🌍</div>
+            <div class="ms-label">UNESCO World Heritage Site</div>
+            <div class="ms-val g">BUFFER ZONE</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">🌿</div>
+            <div class="ms-label">Largest nature reserve C.A.</div>
+            <div class="ms-val">La Amistad</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">🔬</div>
+            <div class="ms-label">Carbon stock study</div>
+            <div class="ms-val">Somarriba 2013</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">👥</div>
+            <div class="ms-label">Indigenous farmers</div>
+            <div class="ms-val">95% Ngöbe+Naso</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-head"><span class="card-title">EBAN — European Biodiversity Accounting Norm</span></div>
+        <div class="card-body">
+          <div style="background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.2);border-radius:7px;padding:12px;margin-bottom:12px;">
+            <div style="font-size:11px;font-weight:600;color:#A78BFA;margin-bottom:6px;">🦋 Emerging Market Opportunity</div>
+            <div style="font-size:10.5px;color:var(--muted);line-height:1.5;">An EarthSurveillance acoustic monitoring layer would quantify COCABO's biodiversity as a <strong style="color:white;">tradeable biodiversity unit</strong> under EBAN — the emerging European standard. This creates a second revenue stream parallel to carbon.</div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">Acoustic monitoring layer<small>Phase 3 deliverable</small></div>
+            <div><span class="pill pill-p">PLANNED</span></div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">Canopy cover % measurement<small>Sentinel-2 LAI · continuous</small></div>
+            <div><span class="pill pill-g">PHASE 1</span></div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">Biodiversity unit issuance<small>Post-pilot · EBAN compliant</small></div>
+            <div><span class="pill pill-a">FUTURE</span></div>
+          </div>
+          <div class="val-row">
+            <div class="val-label">CSRD biodiversity disclosure<small>EU taxonomy alignment</small></div>
+            <div><span class="pill pill-b">PHASE 3</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">Habitat Value Summary</span></div>
+        <div class="card-body">
+          <div class="chart-wrap">
+            <canvas id="habitatChart"></canvas>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:8px;text-align:center;line-height:1.4;">46 species found <em>only</em> in forest · 86 <em>only</em> in cacao — demonstrating cacao agroforestry as independent biodiversity habitat</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== FINANCE ==================== -->
+<div class="screen" id="screen-finance">
+  <div class="section-label">FINANCE + DFI MODULE</div>
+  <div class="section-title">Green Capital Mobilisation</div>
+  <div class="section-sub">NDF · IFU · Nordic pension funds · Verra VCS pathway · CBAM 2028 readiness</div>
+
+  <div class="grid-4">
+    <div class="metric g">
+      <div class="metric-label">Carbon Credit Potential</div>
+      <div class="metric-value">$1M+</div>
+      <div class="metric-sub">/yr · Verra VCS · post-pilot</div>
+    </div>
+    <div class="metric b">
+      <div class="metric-label">DFI Relationships</div>
+      <div class="metric-value">0</div>
+      <div class="metric-sub">Nordic DFIs · NDF/IFU pending</div>
+    </div>
+    <div class="metric a">
+      <div class="metric-label">CBAM Readiness</div>
+      <div class="metric-value">2028</div>
+      <div class="metric-sub">EU Carbon Border Adj. Mechanism</div>
+    </div>
+    <div class="metric g">
+      <div class="metric-label">Pilot Cost vs. Revenue</div>
+      <div class="metric-value">0.4%</div>
+      <div class="metric-sub">EUR 6k / €1.44M annual revenue</div>
+    </div>
+  </div>
+
+  <div class="grid-53">
+    <div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Full Natural Capital Value Stack</span>
+          <span class="card-sub">All revenue streams — current vs. unlocked</span>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap-lg" style="height:200px;">
+            <canvas id="financeChart"></canvas>
+          </div>
+          <div style="margin-top:14px;">
+            <div class="val-row">
+              <div class="val-label">Current cacao revenue<small>$120k/month · certified organic</small></div>
+              <div class="val-num g">$1.44M/yr</div>
+            </div>
+            <div class="val-row">
+              <div class="val-label">Carbon credits (Verra VCS)<small>21,000–42,000 tCO₂e/yr · $15–25/t</small></div>
+              <div class="val-num b">$315k–$1.05M/yr</div>
+            </div>
+            <div class="val-row">
+              <div class="val-label">CBAM premium (EU ETS proxy)<small>$60/t · 2028+ mandatory</small></div>
+              <div class="val-num p">$1.26M–$2.52M/yr</div>
+            </div>
+            <div class="val-row">
+              <div class="val-label">Biodiversity units (EBAN)<small>Acoustic monitoring · post-pilot</small></div>
+              <div class="val-num a">TBD · Phase 3</div>
+            </div>
+            <div class="val-row">
+              <div class="val-label">E-Ledger premium per kg<small>Net sink certification · buyer value</small></div>
+              <div class="val-num g">€9k–€36k/yr</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-head"><span class="card-title">Nordic DFI Target Network</span></div>
+        <div class="card-body">
+          <div class="mini-stat">
+            <div class="ms-icon">🇳🇴</div>
+            <div class="ms-label">NDF · Nordic Development Fund</div>
+            <div class="ms-val a">To Connect</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">🇩🇰</div>
+            <div class="ms-label">IFU · Investment Fund for Developing</div>
+            <div class="ms-val a">To Connect</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">🏦</div>
+            <div class="ms-label">Nordic pension funds</div>
+            <div class="ms-val a">To Connect</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">✅</div>
+            <div class="ms-label">IAF · Inter-American Foundation</div>
+            <div class="ms-val g">Prior relationship</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-icon">✅</div>
+            <div class="ms-label">IDB Invest</div>
+            <div class="ms-val g">Prior relationship</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">Pilot Investment vs. Unlock</span></div>
+        <div class="card-body">
+          <div class="inv-row" style="background:rgba(46,204,113,.04);border-radius:6px 6px 0 0;">
+            <div class="inv-phase">Phase 1</div>
+            <div class="inv-detail">Pre-Discovery · EUDR baseline · no obligation</div>
+            <div class="inv-cost" style="color:var(--green);">FREE</div>
+          </div>
+          <div class="inv-row">
+            <div class="inv-phase">Phase 2–3</div>
+            <div class="inv-detail">Carbon + Verra + Board package · 50% pilot discount</div>
+            <div class="inv-cost" style="color:#60A5FA;">€6,000/yr</div>
+          </div>
+          <div class="inv-row" style="background:rgba(46,204,113,.02);">
+            <div class="inv-phase">Unlocks</div>
+            <div class="inv-detail">Carbon credits + EUDR + DFI + E-Ledger</div>
+            <div class="inv-cost" style="color:var(--green);">$1M+/yr</div>
+          </div>
+          <div style="padding:10px 12px;background:rgba(255,255,255,.02);">
+            <div style="font-size:9.5px;color:var(--muted);text-align:center;line-height:1.5;">For a cooperative earning $120k/month, the pilot investment is 0.4% of annual revenue</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /screens -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Clock
+function updateClock(){
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB',{timeZone:'America/Panama'}) + ' PAN';
+}
+updateClock(); setInterval(updateClock, 1000);
+
+// Nav
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// Toast
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// Community data — 60 communities, sampled representatively
+const communities = [
+  { name: 'Teribe', farmers: 38, ha: 95, eudr: 'pending', carbon: '11.1k' },
+  { name: 'Quebrada Caña', farmers: 22, ha: 55, eudr: 'pending', carbon: '6.4k' },
+  { name: 'Valle de Risco', farmers: 31, ha: 77, eudr: 'pending', carbon: '9.0k' },
+  { name: 'Changuinola', farmers: 45, ha: 112, eudr: 'pending', carbon: '13.1k' },
+  { name: 'Nance de Risco', farmers: 18, ha: 45, eudr: 'pending', carbon: '5.3k' },
+  { name: 'Punta de Piedra', farmers: 27, ha: 67, eudr: 'pending', carbon: '7.8k' },
+  { name: 'Ojo de Agua', farmers: 14, ha: 35, eudr: 'pending', carbon: '4.1k' },
+  { name: 'Silencio', farmers: 41, ha: 102, eudr: 'pending', carbon: '11.9k' },
+  { name: 'Guabo', farmers: 33, ha: 82, eudr: 'pending', carbon: '9.6k' },
+  { name: 'Almirante sector', farmers: 52, ha: 130, eudr: 'pending', carbon: '15.2k' },
+  { name: 'El Empalme', farmers: 19, ha: 47, eudr: 'pending', carbon: '5.5k' },
+  { name: 'San San Druy', farmers: 28, ha: 70, eudr: 'pending', carbon: '8.2k' },
+];
+
+const statusColors = { compliant: '#2ECC71', pending: '#D97706', missing: '#DC2626' };
+
+const commList = document.getElementById('community-list');
+communities.forEach(c => {
+  const div = document.createElement('div');
+  div.className = 'community-row';
+  div.onclick = () => toast('Community: ' + c.name + ' · ' + c.farmers + ' farmers · ' + c.ha + ' ha · Carbon: ' + c.carbon + ' tCO₂e');
+  div.innerHTML = `
+    <div class="comm-dot" style="background:${statusColors[c.eudr]}"></div>
+    <div class="comm-name">${c.name}</div>
+    <div class="comm-farmers" style="color:var(--muted)">${c.farmers} farmers</div>
+    <div class="comm-ha">${c.ha} ha</div>
+    <div class="comm-eudr"><span class="pill ${c.eudr === 'compliant' ? 'pill-g' : c.eudr === 'pending' ? 'pill-a' : 'pill-r'}">${c.eudr.toUpperCase()}</span></div>
+    <div class="comm-carbon" style="color:var(--green);font-family:var(--mono);font-size:11px;">${c.carbon} tCO₂e</div>
+  `;
+  commList.appendChild(div);
+});
+const moreNote = document.createElement('div');
+moreNote.style.cssText = 'padding:8px 10px;font-size:10px;color:var(--muted);text-align:center;font-family:var(--mono);';
+moreNote.textContent = '... 48 more communities · all 60 pending Phase 1 GPS collection';
+commList.appendChild(moreNote);
+
+// Chart defaults
+Chart.defaults.color = '#6B7A85';
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.font.size = 10;
+
+// Carbon chart
+new Chart(document.getElementById('carbonChart'), {
+  type: 'bar',
+  data: {
+    labels: ['$15/t VCM\n(low)', '$25/t VCM\n(high)', '€15/t CSRD', '€60/t ETS proxy'],
+    datasets: [
+      { label: 'Low seq. (21,000 t)', data: [315000, 525000, 315000, 1260000], backgroundColor: 'rgba(46,204,113,.5)', borderColor: '#2ECC71', borderWidth: 1, borderRadius: 3 },
+      { label: 'High seq. (42,000 t)', data: [630000, 1050000, 630000, 2520000], backgroundColor: 'rgba(96,165,250,.3)', borderColor: '#60A5FA', borderWidth: 1, borderRadius: 3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: true, position: 'top', labels: { font: { size: 9 }, boxWidth: 10, color: '#9CA3AF' } } },
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#6B7A85', font: { size: 9 } } },
+      y: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#6B7A85', font: { size: 9 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' } }
+    }
+  }
+});
+
+// Revenue comparison chart
+new Chart(document.getElementById('revenueChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Current cacao ($1.44M)', 'Carbon low ($315k)', 'Carbon high gap ($735k)', 'CBAM potential ($1.26M)'],
+    datasets: [{
+      data: [1440000, 315000, 735000, 1260000],
+      backgroundColor: ['rgba(46,204,113,.7)', 'rgba(96,165,250,.5)', 'rgba(167,139,250,.4)', 'rgba(217,119,6,.4)'],
+      borderColor: ['#2ECC71', '#60A5FA', '#A78BFA', '#D97706'],
+      borderWidth: 1
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'right', labels: { font: { size: 9 }, boxWidth: 10, color: '#9CA3AF' } },
+      tooltip: { callbacks: { label: ctx => ' $' + (ctx.raw/1000).toFixed(0) + 'k/yr' } }
+    }
+  }
+});
+
+// Biodiversity chart
+new Chart(document.getElementById('bioChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Cacao + Forest', 'Cacao Only', 'Forest Only', 'Migratory (cacao)'],
+    datasets: [{
+      label: 'Bird species',
+      data: [102, 86, 46, 18],
+      backgroundColor: ['rgba(46,204,113,.6)', 'rgba(167,139,250,.6)', 'rgba(96,165,250,.6)', 'rgba(217,119,6,.6)'],
+      borderColor: ['#2ECC71', '#A78BFA', '#60A5FA', '#D97706'],
+      borderWidth: 1, borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#6B7A85', font: { size: 9 } } },
+      y: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#6B7A85', font: { size: 9 } }, max: 120 }
+    }
+  }
+});
+
+// Habitat chart
+new Chart(document.getElementById('habitatChart'), {
+  type: 'polarArea',
+  data: {
+    labels: ['In both habitats', 'Cacao exclusive', 'Forest exclusive', 'Migratory (cacao)'],
+    datasets: [{
+      data: [102, 86, 46, 18],
+      backgroundColor: ['rgba(46,204,113,.35)', 'rgba(167,139,250,.35)', 'rgba(96,165,250,.35)', 'rgba(217,119,6,.35)'],
+      borderColor: ['#2ECC71', '#A78BFA', '#60A5FA', '#D97706'],
+      borderWidth: 1
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'right', labels: { font: { size: 9 }, boxWidth: 10, color: '#9CA3AF' } } },
+    scales: { r: { ticks: { display: false }, grid: { color: 'rgba(255,255,255,.06)' } } }
+  }
+});
+
+// Finance chart
+new Chart(document.getElementById('financeChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Today', 'Phase 1\n(EUDR+E-Ledger)', 'Phase 2\n(Carbon Credits)', 'Phase 3\n(Full stack)'],
+    datasets: [
+      { label: 'Cacao revenue', data: [1440000, 1440000, 1440000, 1440000], backgroundColor: 'rgba(46,204,113,.55)', borderColor: '#2ECC71', borderWidth: 1, borderRadius: 3 },
+      { label: 'Carbon credits', data: [0, 0, 315000, 682500], backgroundColor: 'rgba(96,165,250,.45)', borderColor: '#60A5FA', borderWidth: 1, borderRadius: 3 },
+      { label: 'CBAM / premium', data: [0, 0, 0, 1260000], backgroundColor: 'rgba(167,139,250,.4)', borderColor: '#A78BFA', borderWidth: 1, borderRadius: 3 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top', labels: { font: { size: 9 }, boxWidth: 10, color: '#9CA3AF' } } },
+    scales: {
+      x: { stacked: true, grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#6B7A85', font: { size: 9 } } },
+      y: { stacked: true, grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#6B7A85', font: { size: 9 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' } }
+    }
+  }
+});
+</script>
+</body>
+</html>
