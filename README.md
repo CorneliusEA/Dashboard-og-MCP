@@ -1,55 +1,95 @@
 # COCABO ES Dashboard
 
-EarthSurveillance – COCABO Natural Capital Monitor  
+EarthSurveillance — COCABO Natural Capital Monitor  
 1,438 Ngöbe + Naso smallholder farmers · 4,394 ha · Bocas del Toro, Panama
 
-## Deployment
+Built with **Next.js 14** · Deployed to **Google Cloud Run** via GitHub Actions.
 
-Push to `main` → GitHub Actions bygger automatisk et Docker image og deployer til **Google Cloud Run**.
+## Architecture
 
-### Første opsætning – Google Cloud
+```
+src/
+├── app/
+│   ├── page.tsx              # Main dashboard (tab state)
+│   ├── layout.tsx            # HTML root + metadata
+│   ├── globals.css           # Design system
+│   └── api/
+│       ├── overview/         # Pilot metrics
+│       ├── communities/      # EUDR community data
+│       ├── carbon/           # Carbon stock + scenarios
+│       ├── eledger/          # Farm-to-buyer chain
+│       ├── biodiversity/     # Bird species data
+│       └── finance/          # DFI + revenue model
+├── components/
+│   ├── TopBar.tsx            # Navigation + live clock
+│   ├── screens/              # One component per tab
+│   └── ui/                   # Metric, Card, Pill
+└── lib/
+    └── types.ts              # Shared TypeScript types
+```
+
+## Local development
 
 ```bash
-# 1. Opret Artifact Registry repository
-gcloud artifacts repositories create cocabo-dashboard \
-  --repository-format=docker \
-  --location=europe-west1
+npm install
+npm run dev
+# Open http://localhost:3000
+```
 
-# 2. Opret en service account til GitHub Actions
+## Deployment — Google Cloud Run
+
+Push to `main` triggers:
+1. Docker build (Next.js standalone)
+2. Push to Artifact Registry (`europe-west1`)
+3. Deploy to Cloud Run (`cocabo-dashboard`)
+
+### Required GitHub Secrets
+
+| Secret | Description |
+|--------|-------------|
+| `GCP_PROJECT_ID` | Google Cloud project ID |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Workload Identity Provider resource name |
+| `GCP_SERVICE_ACCOUNT` | Service account with run.admin + artifactregistry.writer |
+
+### First-time Google Cloud setup
+
+```bash
+# Artifact Registry
+gcloud artifacts repositories create cocabo-dashboard \
+  --repository-format=docker --location=europe-west1
+
+# Service account
 gcloud iam service-accounts create github-deployer \
   --display-name="GitHub Actions Deployer"
 
-# 3. Tildel nødvendige rettigheder
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/run.admin"
+# Permissions
+for role in roles/run.admin roles/artifactregistry.writer roles/iam.serviceAccountUser; do
+  gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:github-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="$role"
+done
 
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/artifactregistry.writer"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/iam.serviceAccountUser"
-
-# 4. Opsæt Workload Identity Federation (anbefalet over service account keys)
+# Workload Identity Federation
 gcloud iam workload-identity-pools create github-pool \
+  --location=global --display-name="GitHub Actions Pool"
+
+gcloud iam workload-identity-pools providers create-oidc github-provider \
   --location=global \
-  --display-name="GitHub Actions Pool"
+  --workload-identity-pool=github-pool \
+  --issuer-uri="https://token.actions.githubusercontent.com" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository"
+
+gcloud iam service-accounts add-iam-policy-binding \
+  github-deployer@$PROJECT_ID.iam.gserviceaccount.com \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github-pool/attribute.repository/CorneliusEA/Dashboard"
 ```
 
-### GitHub Secrets der skal sættes
+## Connecting live data
 
-| Secret | Beskrivelse |
-|--------|-------------|
-| `GCP_PROJECT_ID` | Dit Google Cloud projekt-ID |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Workload Identity Provider resource name |
-| `GCP_SERVICE_ACCOUNT` | Service account email til deployment |
+Each API route has a `// TODO` comment where you replace the hardcoded values with your real data source:
 
-### Lokal test
-
-```bash
-docker build -t cocabo-dashboard .
-docker run -p 8080:8080 cocabo-dashboard
-# Åbn http://localhost:8080
-```
+- **Satellite data** → Sentinel-2 / Google Earth Engine API
+- **GPS/field data** → COCABO field app / Google Sheets
+- **Financial data** → Internal spreadsheet / database
+- **Biodiversity** → Acoustic monitoring platform
