@@ -3,93 +3,78 @@
 EarthSurveillance — COCABO Natural Capital Monitor  
 1,438 Ngöbe + Naso smallholder farmers · 4,394 ha · Bocas del Toro, Panama
 
-Built with **Next.js 14** · Deployed to **Google Cloud Run** via GitHub Actions.
+**Stack:** Next.js 14 · TypeScript · Cloud Run (`europe-west1`) · Cloud Build
 
-## Architecture
+---
 
-```
-src/
-├── app/
-│   ├── page.tsx              # Main dashboard (tab state)
-│   ├── layout.tsx            # HTML root + metadata
-│   ├── globals.css           # Design system
-│   └── api/
-│       ├── overview/         # Pilot metrics
-│       ├── communities/      # EUDR community data
-│       ├── carbon/           # Carbon stock + scenarios
-│       ├── eledger/          # Farm-to-buyer chain
-│       ├── biodiversity/     # Bird species data
-│       └── finance/          # DFI + revenue model
-├── components/
-│   ├── TopBar.tsx            # Navigation + live clock
-│   ├── screens/              # One component per tab
-│   └── ui/                   # Metric, Card, Pill
-└── lib/
-    └── types.ts              # Shared TypeScript types
+## Auto-deploy: GitHub → Google Cloud Build → Cloud Run
+
+Ingen GitHub Secrets. Alt kører nativt i Google Cloud.
+
+### Opsætning (én gang — kun i Google Cloud Console)
+
+**1. Opret Artifact Registry repository**
+```bash
+gcloud artifacts repositories create cloud-run-source-deploy \
+  --repository-format=docker \
+  --location=europe-west1 \
+  --project=primal-stock-495416-r7
 ```
 
-## Local development
+**2. Tilslut GitHub i Cloud Build Console**
+
+Gå til: **Cloud Build → Triggers → Connect Repository**
+- Vælg **GitHub**
+- Autentificer og vælg `CorneliusEA/Dashboard`
+- Klik **Done**
+
+**3. Opret trigger**
+
+I **Cloud Build → Triggers → Create Trigger**:
+| Felt | Værdi |
+|------|-------|
+| Name | `deploy-on-push` |
+| Event | Push to branch |
+| Branch | `^main$` |
+| Configuration | `cloudbuild.yaml` (autodetect) |
+
+Klik **Save** — det er det. Fra nu af deployer hvert push til `main` automatisk.
+
+**4. Giv Cloud Build tilladelse til Cloud Run**
+
+```bash
+# Hent Cloud Build service account nummer
+PROJECT_NUMBER=$(gcloud projects describe primal-stock-495416-r7 --format="value(projectNumber)")
+
+# Tildel Cloud Run deploy-rettighed
+gcloud projects add-iam-policy-binding primal-stock-495416-r7 \
+  --member="serviceAccount:$PROJECT_NUMBER@cloudbuild.gserviceaccount.com" \
+  --role="roles/run.admin"
+
+gcloud projects add-iam-policy-binding primal-stock-495416-r7 \
+  --member="serviceAccount:$PROJECT_NUMBER@cloudbuild.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountUser"
+```
+
+---
+
+## Lokal udvikling
 
 ```bash
 npm install
 npm run dev
-# Open http://localhost:3000
+# Åbn http://localhost:3000
 ```
 
-## Deployment — Google Cloud Run
+## Tilslut live data
 
-Push to `main` triggers:
-1. Docker build (Next.js standalone)
-2. Push to Artifact Registry (`europe-west1`)
-3. Deploy to Cloud Run (`cocabo-dashboard`)
+Hver API-route har en `// TODO` kommentar — skift med din rigtige datakilde:
 
-### Required GitHub Secrets
-
-| Secret | Description |
-|--------|-------------|
-| `GCP_PROJECT_ID` | Google Cloud project ID |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Workload Identity Provider resource name |
-| `GCP_SERVICE_ACCOUNT` | Service account with run.admin + artifactregistry.writer |
-
-### First-time Google Cloud setup
-
-```bash
-# Artifact Registry
-gcloud artifacts repositories create cocabo-dashboard \
-  --repository-format=docker --location=europe-west1
-
-# Service account
-gcloud iam service-accounts create github-deployer \
-  --display-name="GitHub Actions Deployer"
-
-# Permissions
-for role in roles/run.admin roles/artifactregistry.writer roles/iam.serviceAccountUser; do
-  gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member="serviceAccount:github-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
-    --role="$role"
-done
-
-# Workload Identity Federation
-gcloud iam workload-identity-pools create github-pool \
-  --location=global --display-name="GitHub Actions Pool"
-
-gcloud iam workload-identity-pools providers create-oidc github-provider \
-  --location=global \
-  --workload-identity-pool=github-pool \
-  --issuer-uri="https://token.actions.githubusercontent.com" \
-  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository"
-
-gcloud iam service-accounts add-iam-policy-binding \
-  github-deployer@$PROJECT_ID.iam.gserviceaccount.com \
-  --role="roles/iam.workloadIdentityUser" \
-  --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github-pool/attribute.repository/CorneliusEA/Dashboard"
-```
-
-## Connecting live data
-
-Each API route has a `// TODO` comment where you replace the hardcoded values with your real data source:
-
-- **Satellite data** → Sentinel-2 / Google Earth Engine API
-- **GPS/field data** → COCABO field app / Google Sheets
-- **Financial data** → Internal spreadsheet / database
-- **Biodiversity** → Acoustic monitoring platform
+| Route | Fil | Tænkt kilde |
+|-------|-----|-------------|
+| `/api/overview` | `src/app/api/overview/route.ts` | Database / Google Sheets |
+| `/api/communities` | `src/app/api/communities/route.ts` | GPS field app |
+| `/api/carbon` | `src/app/api/carbon/route.ts` | Google Earth Engine / Sentinel-2 |
+| `/api/eledger` | `src/app/api/eledger/route.ts` | Shipment tracking |
+| `/api/biodiversity` | `src/app/api/biodiversity/route.ts` | Acoustic monitoring |
+| `/api/finance` | `src/app/api/finance/route.ts` | Financial model |
