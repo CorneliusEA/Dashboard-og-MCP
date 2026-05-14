@@ -78,7 +78,7 @@ export function Carbon() {
     <div>
       <div className="section-label">CARBON RESERVE</div>
       <div className="section-title">Carbon Stock + Sequestration Model</div>
-      <div className="section-sub">Somarriba 2013 · 117 tC/ha organic cacao agroforestry · 4,394 ha · UNESCO La Amistad buffer zone</div>
+      <div className="section-sub">Somarriba 2013 · 117 tC/ha organic cacao agroforestry · Sentinel-1 SAR fusion · 4,394 ha · UNESCO La Amistad buffer zone</div>
 
       <div className="grid-4">
         <Metric color="g" label="Carbon Reserve" value="1.88M" sub="tCO₂e stored · 117 tC/ha avg" delta="↑ Largest non-monetised asset" deltaDir="up" />
@@ -114,11 +114,12 @@ export function Carbon() {
         <div>
           <Card title="Carbon Credit Pathway">
             {[
-              { step: '1', label: 'EUDR Compliance', sub: 'Prerequisite for Verra VCS eligibility', pill: <Pill variant="a">PHASE 1</Pill> },
-              { step: '2', label: 'Biomass Carbon Model', sub: 'Somarriba 2013 · field validation', pill: <Pill variant="a">PHASE 2</Pill> },
-              { step: '3', label: 'Verra VCS PDD', sub: 'Project Design Document submitted', pill: <Pill variant="c">PHASE 3</Pill> },
-              { step: '4', label: 'Third-Party Verification', sub: 'VVB audit · credit issuance', pill: <Pill variant="c">PHASE 3</Pill> },
-              { step: '5', label: 'Carbon Credits Issued', sub: '21,000–42,000 tCO₂e/yr tradeable', pill: <Pill variant="c">POST-PILOT</Pill> },
+              { step: '1', label: 'EUDR Compliance', sub: 'Prerequisite · GPS polygons + satellite deforestation baseline', pill: <Pill variant="a">PHASE 1</Pill> },
+              { step: '2', label: 'Sentinel-2 + SAR Fusion Baseline', sub: 'Sentinel-1 SAR + Sentinel-2 NDVI · above-ground biomass', pill: <Pill variant="a">PHASE 1</Pill> },
+              { step: '3', label: 'Biomass Carbon Model', sub: 'Somarriba 2013 · 117 tC/ha · field validation per community', pill: <Pill variant="a">PHASE 2</Pill> },
+              { step: '4', label: 'Verra VCS PDD', sub: 'Project Design Document submitted · AFOLU methodology', pill: <Pill variant="c">PHASE 3</Pill> },
+              { step: '5', label: 'Third-Party Verification', sub: 'VVB audit · Verra registry · credit issuance', pill: <Pill variant="c">PHASE 3</Pill> },
+              { step: '6', label: 'Carbon Credits Issued', sub: '21,000–42,000 tCO₂e/yr tradeable · $315k–$1M/yr', pill: <Pill variant="c">POST-PILOT</Pill> },
             ].map((item) => (
               <div key={item.step} className="val-row">
                 <div className="val-label">
