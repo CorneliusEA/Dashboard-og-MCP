@@ -52,13 +52,13 @@ export function Biodiversity() {
     <div>
       <div className="section-label">BIODIVERSITY MODULE</div>
       <div className="section-title">COCABO as a Biodiversity Reserve</div>
-      <div className="section-sub">234 bird species recorded across cacao + forest habitats · UNESCO La Amistad buffer zone · Bocas del Toro</div>
+      <div className="section-sub">234 bird species recorded across cacao + forest habitats · Smithsonian STRI 2007 · UNESCO La Amistad buffer zone · Bocas del Toro</div>
 
       <div className="grid-4">
-        <Metric color="g" label="Total Bird Species" value={String(data.totalBirdSpecies)} sub="Recorded across all habitats" delta="↑ Exceptionally high diversity" deltaDir="up" />
+        <Metric color="g" label="Total Bird Species" value={String(data.totalBirdSpecies)} sub="Smithsonian STRI 2007 survey" delta="↑ Exceptionally high diversity" deltaDir="up" />
         <Metric color="b" label="In Cacao + Forest" value={String(data.inCacaoAndForest)} sub="Species using both habitats" delta="↑ Cross-habitat utility" deltaDir="up" />
         <Metric color="p" label="Cacao-Only Species" value={String(data.cacaoOnly)} sub="Exclusive to cacao agroforestry" delta="↑ Cacao as primary habitat" deltaDir="up" />
-        <Metric color="a" label="Migratory (Cacao Only)" value={String(data.migratoryInCacao)} sub="North American migratory birds" delta="↑ International conservation value" deltaDir="up" />
+        <Metric color="a" label="Migratory (Cacao)" value={`${data.migratoryInCacao} / 27`} sub="of 27 N. American migratory spp." delta="↑ International conservation value" deltaDir="up" />
       </div>
 
       <div className="grid-53">
@@ -82,8 +82,8 @@ export function Biodiversity() {
           <Card title="UNESCO La Amistad Context">
             {[
               { icon: '🌍', label: 'UNESCO World Heritage Site', value: 'BUFFER ZONE', color: 'g' },
-              { icon: '🌿', label: 'Largest nature reserve C.A.', value: 'La Amistad', color: '' },
-              { icon: '🔬', label: 'Carbon stock study', value: 'Somarriba 2013', color: '' },
+              { icon: '🔬', label: 'Bird survey source', value: 'STRI 2007', color: '' },
+              { icon: '🌿', label: 'Carbon stock study', value: 'Somarriba 2013', color: '' },
               { icon: '👥', label: 'Indigenous farmers', value: '95% Ngöbe+Naso', color: '' },
             ].map((item, i) => (
               <div key={i} className="mini-stat">
@@ -93,9 +93,9 @@ export function Biodiversity() {
               </div>
             ))}
             <div style={{ marginTop: 12, padding: 10, background: 'rgba(255,255,255,.03)', borderRadius: 7 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'white', marginBottom: 4 }}>Key Finding</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'white', marginBottom: 4 }}>Key Finding — Smithsonian STRI 2007</div>
               <div style={{ fontSize: 10.5, color: 'var(--muted)', lineHeight: 1.5 }}>
-                Canopy cover is the <strong style={{ color: 'white' }}>primary driver</strong> of bird diversity. COCABO's certified organic shade-grown agroforestry management directly produces this outcome — making biodiversity a verifiable, manageable asset.
+                Canopy cover is the <strong style={{ color: 'white' }}>primary driver</strong> of bird diversity. COCABO's certified organic shade-grown agroforestry directly produces this outcome — 18 of 27 North American migratory species recorded exclusively in cacao habitat.
               </div>
             </div>
           </Card>

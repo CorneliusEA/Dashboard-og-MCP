@@ -8,9 +8,9 @@ import { Pill } from '@/components/ui/Pill'
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 const MOCK_LEDGER: ELedgerMetrics = {
-  seqPerKgCacao: 2.31,
-  processShippingEmissions: 0.59,
-  netCarbonPerKgShipped: 1.72,
+  seqPerKgCacao: 1.72,
+  processShippingEmissions: 0.20,
+  netCarbonPerKgShipped: 1.52,
   annualExportTonnes: 400,
   annualCarbonCertTCO2e: 608,
 }
@@ -37,11 +37,11 @@ export function ELedger() {
           <Card title="E-Ledger Certification Flow" sub="Farm → Fermentation → Shipping → EU Buyer Certificate">
             <div className="flow-steps">
               {[
-                { icon: '🌱', label: 'Farm Level', sub: 'GPS polygon · biomass model · +2.31 kg CO₂e/kg', active: true },
-                { icon: '🏭', label: 'Fermentation', sub: 'COCABO facility · emissions measured', active: false },
-                { icon: '📦', label: 'Dry + Pack', sub: 'Weight verified · batch ID assigned', active: false },
-                { icon: '🚢', label: 'Shipping EU', sub: 'Scope 3 · -0.59 kg CO₂e/kg total', active: false },
-                { icon: '📋', label: 'EU Certificate', sub: 'Net +1.72 kg CO₂e/kg · CSRD ready', active: false },
+                { icon: '🌱', label: 'Farm Level', sub: `GPS polygon · biomass model · +${d.seqPerKgCacao} kg CO₂e/kg`, active: true },
+                { icon: '🏭', label: 'Fermentation', sub: 'COCABO facility · emissions measured · blockchain entry', active: false },
+                { icon: '📦', label: 'Dry + Pack', sub: 'Weight verified · batch ID assigned · QR code on sack', active: false },
+                { icon: '🚢', label: 'Shipping EU', sub: `Scope 3 · -${d.processShippingEmissions} kg CO₂e/kg total`, active: false },
+                { icon: '📋', label: 'EU Certificate', sub: `Net +${d.netCarbonPerKgShipped} kg CO₂e/kg · CSRD ready`, active: false },
               ].map((step, i) => (
                 <div key={i} className={`flow-step${step.active ? ' active-step' : ''}`}>
                   <div className="flow-icon">{step.icon}</div>
@@ -91,7 +91,11 @@ export function ELedger() {
             ))}
           </Card>
 
-          <Card title="EU Buyer CSRD Obligations">
+          <Card title="Blockchain + QR Traceability">
+            <div style={{ background: 'rgba(96,165,250,.06)', border: '1px solid rgba(96,165,250,.2)', borderRadius: 7, padding: 12, marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#60A5FA', marginBottom: 6 }}>🔗 Immutable Chain of Custody</div>
+              <div style={{ fontSize: 10.5, color: 'var(--muted)', lineHeight: 1.5 }}>Every batch receives a blockchain-anchored record at fermentation. QR code printed on the sack links buyer to the full carbon audit trail — farm polygon, biomass model, shipping emissions, net CO₂e certificate.</div>
+            </div>
             {[
               { label: 'Scope 3 category 1 reporting', sub: 'Purchased goods/services CO₂ content', pill: <Pill variant="r">MANDATORY NOW</Pill> },
               { label: 'EUDR traceability', sub: 'Farm-level GPS + deforestation proof', pill: <Pill variant="r">JAN 2025</Pill> },
