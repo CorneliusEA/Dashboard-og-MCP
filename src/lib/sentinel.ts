@@ -1,5 +1,7 @@
-// COCABO area: Bocas del Toro, Panama
 const COCABO_BBOX = [-82.45, 9.05, -82.05, 9.45]
+const XOCO_BBOX   = [-86.38, 12.27, -86.33, 12.32] // El Lago, Nicaragua
+
+export const BBOXES = { cocabo: COCABO_BBOX, xoco: XOCO_BBOX }
 
 let cachedToken: { token: string; expires: number } | null = null
 
@@ -31,17 +33,16 @@ export interface SentinelStats {
   date: string
 }
 
-export async function fetchNDVI(): Promise<SentinelStats> {
+export async function fetchNDVI(bbox = COCABO_BBOX): Promise<SentinelStats> {
   const token = await getToken()
 
-  // Last 30 days
   const to = new Date().toISOString().split('T')[0]
   const from = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
 
   const body = {
     input: {
       bounds: {
-        bbox: COCABO_BBOX,
+        bbox,
         properties: { crs: 'http://www.opengis.net/def/crs/EPSG/0/4326' },
       },
       data: [
