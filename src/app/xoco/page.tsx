@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { XocoSidebar, type XocoTab } from '@/components/XocoSidebar'
 import { XocoOverview } from '@/components/screens/xoco/XocoOverview'
 import { XocoBiodiversity } from '@/components/screens/xoco/XocoBiodiversity'
@@ -32,7 +33,9 @@ function XocoTopBar() {
 
   return (
     <div className="topbar">
-      <span className="logo">EARTH SURVEILLANCE</span>
+      <Link href="/" style={{ textDecoration: 'none' }}>
+        <span className="logo" style={{ cursor: 'pointer' }}>EARTH SURVEILLANCE</span>
+      </Link>
       <span className="logo-sep">/</span>
       <span className="logo-context" style={{ color: '#9DFF51' }}>XOCO GOURMET · El Lago, Nicaragua</span>
       <div className="nav-tabs">
