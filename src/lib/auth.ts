@@ -1,7 +1,7 @@
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
-import { findUser } from '@/lib/users'
+import { getUserByEmail, seedIfEmpty } from '@/lib/userStore'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -13,7 +13,8 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
-        const user = findUser(credentials.email)
+        await seedIfEmpty()
+        const user = await getUserByEmail(credentials.email)
         if (!user) return null
         const valid = await bcrypt.compare(credentials.password, user.passwordHash)
         if (!valid) return null
@@ -23,15 +24,21 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     jwt({ token, user }) {
-      if (user) token.access = (user as { access: string[] }).access
+      if (user) {
+        token.access = (user as { access: string[] }).access
+        token.userId = user.id
+      }
       return token
     },
     session({ session, token }) {
-      if (session.user) (session.user as { access: string[] }).access = token.access as string[]
+      if (session.user) {
+        (session.user as { access: string[] }).access = token.access as string[]
+        ;(session.user as { id: string }).id = token.userId as string
+      }
       return session
     },
   },
   pages: { signIn: '/login' },
-  session: { strategy: 'jwt', maxAge: 30 * 24 * 60 * 60 }, // 30 days
+  session: { strategy: 'jwt', maxAge: 30 * 24 * 60 * 60 },
   secret: process.env.NEXTAUTH_SECRET,
 }
