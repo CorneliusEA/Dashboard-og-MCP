@@ -3,8 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { updateUser, deleteUser } from '@/lib/userStore'
 
-function isAdmin(session: { user?: { access?: string[] } } | null) {
-  return session?.user && (session.user as { access: string[] }).access?.includes('*')
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isAdmin(session: any) {
+  return session?.user?.access?.includes('*')
 }
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
