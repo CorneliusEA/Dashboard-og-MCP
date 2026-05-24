@@ -2,7 +2,16 @@
 import { Card } from '@/components/ui/Card'
 import { Pill } from '@/components/ui/Pill'
 
-const INDICATORS = [
+const SITE_ID = '101561'
+const OWNER = 'earth-surveillance'
+const XNATURA_BASE = `https://www.3bee.com/en/owner/${OWNER}/monitoring/site/${SITE_ID}`
+
+const WIDGETS = [
+  { id: 'monitoring-kpis', label: 'Monitoring KPIs', height: 420 },
+  { id: 'field-observations', label: 'Field Observations', height: 480 },
+]
+
+const INDICATOR_SPECIES = [
   { name: 'Keel-billed toucan', status: 'Present', variant: 'g' as const },
   { name: 'Three-toed sloth', status: 'Present', variant: 'g' as const },
   { name: 'Morpho butterfly', status: 'Present', variant: 'g' as const },
@@ -13,68 +22,49 @@ const INDICATORS = [
 export function XocoBiodiversity() {
   return (
     <div>
-      <div className="section-label">XNatura API · Nature Monitor</div>
-      <div className="section-title">Biodiversity — El Lago</div>
-      <div className="section-sub">Species monitoring across birds, mammals and insects · composite biodiversity index · XNatura acoustic + visual survey pipeline</div>
+      <div className="section-label">XNatura · 3Bee · Nature Monitor</div>
+      <div className="section-title">Biodiversity — El Lago, Nicaragua</div>
+      <div className="section-sub">Live sensor data from XNatura platform · acoustic + camera-trap + visual survey pipeline · site {SITE_ID}</div>
 
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--mono)', fontSize: 9, padding: '3px 9px', borderRadius: 4, border: '0.5px solid rgba(34,211,238,.3)', background: 'var(--dark2)', color: '#22D3EE', marginBottom: 14 }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22D3EE', display: 'inline-block' }} />
-        SOURCE · XNATURA API · mock data · live API pending
+      {/* Status badge */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--mono)', fontSize: 9, padding: '3px 9px', borderRadius: 4, border: '0.5px solid rgba(157,255,81,.3)', background: 'var(--dark2)', color: '#9DFF51' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#9DFF51', display: 'inline-block', animation: 'pulse 2s infinite' }} />
+          XNATURA · LIVE WIDGETS · 3BEE PLATFORM
+        </div>
+        <a
+          href={`${XNATURA_BASE}/census/`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--mono)', fontSize: 9, padding: '3px 9px', borderRadius: 4, border: '0.5px solid rgba(157,255,81,.2)', background: 'transparent', color: '#9DFF51', textDecoration: 'none', cursor: 'pointer' }}
+        >
+          ↗ OPEN FULL PLATFORM
+        </a>
       </div>
 
-      <div className="grid-4">
-        {[
-          { label: 'Birds', value: '234', sub: 'species documented' },
-          { label: 'Mammals', value: '18', sub: 'species documented' },
-          { label: 'Insects', value: '62', sub: 'taxa identified' },
-          { label: 'Biodiversity index', value: '74/100', sub: 'composite · 0–100' },
-        ].map((m, i) => (
-          <div key={i} className="metric g" style={{ borderLeft: '2px solid #22D3EE' }}>
-            <div style={{ fontSize: 8.5, fontFamily: 'var(--mono)', color: '#22D3EE', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 4 }}>{m.label}</div>
-            <div className="metric-value">{m.value}</div>
-            <div className="metric-sub">{m.sub}</div>
+      {/* XNatura embedded widgets */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+        {WIDGETS.map((w) => (
+          <div key={w.id}>
+            <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>
+              XNATURA · {w.label}
+            </div>
+            <iframe
+              src={`${XNATURA_BASE}/widgets/${w.id}/?variant=dark`}
+              style={{ width: '100%', minHeight: w.height, border: 'none', borderRadius: 8, display: 'block', background: 'var(--dark2)' }}
+              loading="lazy"
+              allow="fullscreen"
+              title={`XNatura ${w.label}`}
+            />
           </div>
         ))}
       </div>
 
+      {/* Indicator species + REST API note */}
       <div className="grid-65">
-        <div>
-          <Card title="Species count by class" sub="XNatura combined acoustic, camera-trap and visual survey">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '4px 0' }}>
-              {[
-                { label: 'Birds', value: 234, max: 234, color: '#22D3EE' },
-                { label: 'Mammals', value: 18, max: 234, color: '#A78BFA' },
-                { label: 'Insects', value: 62, max: 234, color: '#60A5FA' },
-              ].map((item) => (
-                <div key={item.label}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 4 }}>
-                    <span style={{ color: '#D1D5DB' }}>{item.label}</span>
-                    <span style={{ fontFamily: 'var(--mono)', color: item.color }}>{item.value}</span>
-                  </div>
-                  <div style={{ background: 'rgba(255,255,255,.06)', borderRadius: 2, height: 10, overflow: 'hidden' }}>
-                    <div style={{ width: `${(item.value / item.max) * 100}%`, height: '100%', background: item.color, borderRadius: 2 }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 12 }}>Biodiversity index recovering as agroforestry canopy matures. Indicator-species absence is the main suppressor.</div>
-          </Card>
-
-          <Card title="Biodiversity index — trend" sub="Composite index · 6 periods">
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 100 }}>
-              {[58,61,64,67,70,74].map((v, i) => (
-                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                  <div style={{ width: '100%', background: i === 5 ? '#22D3EE' : 'rgba(34,211,238,.3)', borderRadius: '2px 2px 0 0', height: `${(v/100)*100}%` }} />
-                  <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--muted)' }}>{v}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        <Card title="Indicator species — watch list" sub="XNatura">
-          {INDICATORS.map((item, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: i < INDICATORS.length - 1 ? '1px solid var(--bd2)' : 'none' }}>
+        <Card title="Indicator species — watch list" sub="Field observations · XNatura census data">
+          {INDICATOR_SPECIES.map((item, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: i < INDICATOR_SPECIES.length - 1 ? '1px solid var(--bd2)' : 'none' }}>
               <div style={{ width: 7, height: 7, borderRadius: '50%', background: item.variant === 'g' ? 'var(--green)' : item.variant === 'a' ? '#FFB402' : 'var(--red)', flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 11.5, fontWeight: 500, color: 'white' }}>{item.name}</div>
@@ -83,8 +73,26 @@ export function XocoBiodiversity() {
               <Pill variant={item.variant}>{item.variant === 'g' ? 'PRESENT' : item.variant === 'a' ? 'WATCH' : 'ABSENT'}</Pill>
             </div>
           ))}
-          <div style={{ background: 'rgba(34,211,238,.05)', border: '1px solid rgba(34,211,238,.15)', borderRadius: 7, padding: 12, marginTop: 12 }}>
-            <div style={{ fontSize: 10.5, color: 'var(--muted)', lineHeight: 1.5 }}>XNatura API credentials expected — live acoustic + camera-trap data will replace mock values automatically.</div>
+        </Card>
+
+        <Card title="REST API — status" sub="3Bee API · Bearer token required">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ background: 'rgba(157,255,81,.05)', border: '1px solid rgba(157,255,81,.15)', borderRadius: 7, padding: 12 }}>
+              <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#9DFF51', marginBottom: 6 }}>ENDPOINT</div>
+              <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--muted)', lineHeight: 1.6 }}>
+                GET api.3bee.com/v1/sites/{SITE_ID}/kpis<br />
+                Authorization: Bearer TOKEN
+              </div>
+            </div>
+            <div style={{ background: 'rgba(255,180,2,.05)', border: '1px solid rgba(255,180,2,.2)', borderRadius: 7, padding: 12 }}>
+              <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#FFB402', marginBottom: 4 }}>⚠ PENDING</div>
+              <div style={{ fontSize: 10, color: 'var(--muted)', lineHeight: 1.5 }}>
+                API token not yet configured. Request from 3Bee technical onboarding, then add <code style={{ fontFamily: 'var(--mono)', background: 'rgba(255,255,255,.05)', padding: '1px 4px', borderRadius: 3 }}>XNATURA_API_TOKEN</code> to Cloud Run env vars.
+              </div>
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--muted)', lineHeight: 1.5 }}>
+              Available data: species KPIs, diversity index, habitat coverage, phenology, weather. Will replace widget iframes with native dashboard cards once token is active.
+            </div>
           </div>
         </Card>
       </div>
