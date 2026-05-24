@@ -25,7 +25,8 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     jwt({ token, user }) {
       if (user) {
-        token.access = (user as { access: string[] }).access
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        token.access = (user as any).access
         token.userId = user.id
       }
       return token
