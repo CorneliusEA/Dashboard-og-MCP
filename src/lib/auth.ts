@@ -2,6 +2,7 @@ import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { getUserByEmail, seedIfEmpty } from '@/lib/userStore'
+import { USERS } from '@/lib/users'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -13,8 +14,18 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
-        await seedIfEmpty()
-        const user = await getUserByEmail(credentials.email)
+
+        // Try Firestore first; fall back to static list if unavailable
+        let user: { id: string; email: string; name: string; passwordHash: string; access: string[] } | null = null
+        try {
+          await seedIfEmpty()
+          user = await getUserByEmail(credentials.email)
+        } catch (err) {
+          console.warn('Firestore unavailable, falling back to static users:', err)
+          const staticUser = USERS.find(u => u.email.toLowerCase() === credentials.email.toLowerCase())
+          user = staticUser ?? null
+        }
+
         if (!user) return null
         const valid = await bcrypt.compare(credentials.password, user.passwordHash)
         if (!valid) return null
