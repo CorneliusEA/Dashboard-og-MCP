@@ -8,10 +8,17 @@ export interface ForslerMap {
   lastModifiedDate: string
 }
 
+export interface ForslerGeometry {
+  type: 'Point' | 'Polygon' | 'MultiPolygon' | 'LineString'
+  coordinates: number[] | number[][] | number[][][] | number[][][][]
+}
+
 export interface ForslerFeature {
   id: string
   name?: string
   categories: string[]
+  geometry?: ForslerGeometry
+  properties?: Record<string, unknown>
 }
 
 const BASE_URL = (process.env.FORSLER_BASE_URL ?? 'https://foresting-tomorrow-public-4yr7fia4nq-ey.a.run.app').replace(/\/$/, '')

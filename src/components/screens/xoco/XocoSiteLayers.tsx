@@ -1,32 +1,42 @@
 'use client'
+import dynamic from 'next/dynamic'
 import useSWR from 'swr'
 import { Card } from '@/components/ui/Card'
 import { Pill } from '@/components/ui/Pill'
+
+// Leaflet must not run on server
+const XocoMap = dynamic(() => import('@/components/XocoMap').then(m => m.XocoMap), { ssr: false, loading: () => (
+  <div style={{ height: 480, background: 'var(--dark2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--bd)' }}>
+    <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--muted)' }}>Loading map…</span>
+  </div>
+)})
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 export function XocoSiteLayers() {
   const { data: forsler } = useSWR('/api/xoco/forsler', fetcher, { refreshInterval: 300_000 })
+  const { data: mapData }  = useSWR('/api/xoco/map',     fetcher, { refreshInterval: 300_000 })
 
-  const totalMaps = forsler?.totalMaps ?? 10
+  const totalMaps    = forsler?.totalMaps    ?? 10
   const featureCount = forsler?.featureCount ?? 101
 
   return (
     <div>
       <div className="section-label">Forsler API · Spatial Layers</div>
       <div className="section-title">Site Layers — El Lago</div>
-      <div className="section-sub">Spatial data layers from Forsler: full-site boundary, lotes, key points — {totalMaps} maps registered for Xoco Gourmet</div>
+      <div className="section-sub">Interactive map with Forsler spatial layers · {totalMaps} maps · {featureCount} features</div>
 
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--mono)', fontSize: 9, padding: '3px 9px', borderRadius: 4, border: '0.5px solid rgba(167,139,250,.3)', background: 'var(--dark2)', color: '#A78BFA', marginBottom: 14 }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#A78BFA', display: 'inline-block' }} />
         SOURCE · FORSLER API · {totalMaps} maps · {featureCount} features live
       </div>
 
-      <div className="grid-3">
+      {/* KPI row */}
+      <div className="grid-3" style={{ marginBottom: 16 }}>
         {[
-          { label: 'Total maps', value: String(totalMaps), sub: 'registered in Forsler org', color: 'var(--green)' },
-          { label: 'Lotes / features', value: String(featureCount), sub: 'plots, lotes & key points', color: 'var(--green)' },
-          { label: 'Site area', value: '95.4 ha', sub: 'El Lago boundary · registered', color: '#9DFF51' },
+          { label: 'Total maps',         value: String(totalMaps),    sub: 'registered in Forsler org',   color: 'var(--green)' },
+          { label: 'Lotes / features',   value: String(featureCount), sub: 'plots, lotes & key points',  color: 'var(--green)' },
+          { label: 'Site area',          value: '95.4 ha',            sub: 'El Lago boundary · registered', color: '#9DFF51'    },
         ].map((m, i) => (
           <div key={i} className="metric" style={{ borderLeft: '2px solid #A78BFA' }}>
             <div style={{ fontSize: 8.5, fontFamily: 'var(--mono)', color: '#A78BFA', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 4 }}>{m.label}</div>
@@ -36,7 +46,17 @@ export function XocoSiteLayers() {
         ))}
       </div>
 
-      <Card title="Layer register" sub="Live from Forsler API">
+      {/* Interactive map */}
+      {mapData ? (
+        <XocoMap data={mapData} />
+      ) : (
+        <div style={{ height: 480, background: 'var(--dark2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--bd)', marginBottom: 16 }}>
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--muted)' }}>Loading map data from Forsler…</span>
+        </div>
+      )}
+
+      {/* Layer register */}
+      <Card title="Layer register" sub="Live from Forsler API" style={{ marginTop: 16 }}>
         <table className="data-table">
           <thead><tr><th>Layer</th><th>Geometry</th><th>Features</th><th>Use</th><th>Status</th></tr></thead>
           <tbody>
@@ -70,28 +90,6 @@ export function XocoSiteLayers() {
             </tr>
           </tbody>
         </table>
-      </Card>
-
-      <Card title="All Forsler maps — Xoco Gourmet">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-          {(forsler?.maps ?? []).map((m: { id: string; name: string; estateName?: string; bbox?: number[] }, i: number) => (
-            <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--bd2)', fontSize: 11 }}>
-              <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#A78BFA', flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 500, color: 'white' }}>{m.name || '(unnamed)'}</div>
-                <div style={{ fontSize: 9.5, color: 'var(--muted)', marginTop: 1 }}>{m.estateName}</div>
-              </div>
-              {m.bbox && (
-                <div style={{ fontFamily: 'var(--mono)', fontSize: 8.5, color: 'var(--muted)', textAlign: 'right' }}>
-                  {m.bbox[1].toFixed(3)}N {Math.abs(m.bbox[0]).toFixed(3)}W
-                </div>
-              )}
-            </div>
-          ))}
-          {(!forsler?.maps || forsler.maps.length === 0) && (
-            <div style={{ fontSize: 10, color: 'var(--muted)', padding: '12px 0', textAlign: 'center' }}>Loading maps from Forsler...</div>
-          )}
-        </div>
       </Card>
     </div>
   )
