@@ -39,6 +39,13 @@ export async function fetchNDVI(bbox = COCABO_BBOX): Promise<SentinelStats> {
   const to = new Date().toISOString().split('T')[0]
   const from = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
 
+  // Sentinel Hub Statistics API caps output at 2500x2500px. A fixed 0.0001°
+  // resolution overflows that for anything wider than ~0.25°, so derive
+  // resx/resy from the bbox instead (capped at 2000px per side for headroom).
+  const [minLon, minLat, maxLon, maxLat] = bbox
+  const resx = Math.max((maxLon - minLon) / 2000, 0.0001)
+  const resy = Math.max((maxLat - minLat) / 2000, 0.0001)
+
   const body = {
     input: {
       bounds: {
@@ -55,15 +62,21 @@ export async function fetchNDVI(bbox = COCABO_BBOX): Promise<SentinelStats> {
     aggregation: {
       timeRange: { from: `${from}T00:00:00Z`, to: `${to}T23:59:59Z` },
       aggregationInterval: { of: 'P30D' },
-      resx: 0.0001,
-      resy: 0.0001,
+      resx,
+      resy,
       evalscript: `//VERSION=3
 function setup() {
-  return { input: [{ bands: ["B04","B08"], units:"DN" }], output: { bands: 1, sampleType:"FLOAT32" } };
+  return {
+    input: [{ bands: ["B04","B08","dataMask"], units:"DN" }],
+    output: [
+      { id: "default", bands: 1, sampleType: "FLOAT32" },
+      { id: "dataMask", bands: 1 }
+    ]
+  };
 }
 function evaluatePixel(s) {
   const ndvi = (s.B08 - s.B04) / (s.B08 + s.B04);
-  return [ndvi];
+  return { default: [ndvi], dataMask: [s.dataMask] };
 }`,
     },
     calculations: { default: { statistics: { default: { percentiles: { k: [25, 75] } } } } },
