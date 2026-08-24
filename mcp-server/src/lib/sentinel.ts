@@ -1,7 +1,12 @@
-const COCABO_BBOX = [-82.45, 9.05, -82.05, 9.45]
-const XOCO_BBOX   = [-86.38, 12.27, -86.33, 12.32] // El Lago, Nicaragua
+/**
+ * Sentinel Hub client (Copernicus) — ported from Dashboard repo src/lib/sentinel.ts
+ * Docs: https://docs.sentinel-hub.com
+ */
 
-export const BBOXES = { cocabo: COCABO_BBOX, xoco: XOCO_BBOX }
+export const BBOXES = {
+  cocabo: [-82.45, 9.05, -82.05, 9.45] as [number, number, number, number],
+  xoco: [-86.38, 12.27, -86.33, 12.32] as [number, number, number, number],
+}
 
 let cachedToken: { token: string; expires: number } | null = null
 
@@ -15,10 +20,10 @@ async function getToken(): Promise<string> {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
-        client_id: process.env.SENTINEL_CLIENT_ID!,
-        client_secret: process.env.SENTINEL_CLIENT_SECRET!,
+        client_id: process.env.SENTINEL_CLIENT_ID ?? '',
+        client_secret: process.env.SENTINEL_CLIENT_SECRET ?? '',
       }),
-    }
+    },
   )
   if (!res.ok) throw new Error(`Sentinel auth failed: ${res.status}`)
   const json = await res.json()
@@ -33,7 +38,7 @@ export interface SentinelStats {
   date: string
 }
 
-export async function fetchNDVI(bbox = COCABO_BBOX): Promise<SentinelStats> {
+export async function fetchNDVI(bbox: [number, number, number, number] = BBOXES.cocabo): Promise<SentinelStats> {
   const token = await getToken()
 
   const to = new Date().toISOString().split('T')[0]
@@ -48,10 +53,7 @@ export async function fetchNDVI(bbox = COCABO_BBOX): Promise<SentinelStats> {
 
   const body = {
     input: {
-      bounds: {
-        bbox,
-        properties: { crs: 'http://www.opengis.net/def/crs/EPSG/0/4326' },
-      },
+      bounds: { bbox, properties: { crs: 'http://www.opengis.net/def/crs/EPSG/0/4326' } },
       data: [
         {
           type: 'sentinel-2-l2a',
@@ -95,9 +97,9 @@ function evaluatePixel(s) {
   const stats = interval?.outputs?.default?.bands?.B0?.stats
 
   return {
-    ndviMean: stats?.mean ?? 0.72,
-    ndviMin: stats?.min ?? 0.45,
-    ndviMax: stats?.max ?? 0.91,
+    ndviMean: stats?.mean ?? null,
+    ndviMin: stats?.min ?? null,
+    ndviMax: stats?.max ?? null,
     date: interval?.interval?.from?.split('T')[0] ?? from,
   }
 }
