@@ -61,11 +61,14 @@ Tested 2026-08-24 against real credentials:
       at the connection level from this environment (DNS resolves fine).
       Other hosts work, so this looks like the staging server itself being
       down or IP-restricted, not a code issue. Re-test once confirmed reachable.
-- [ ] `xnatura_biodiversity` — **blocked**: the credentials we have are a
-      3Bee *web platform* login, not an API token. `api.3bee.com` is a live
-      server but the guessed REST paths (`/v1/sites/{id}/kpis`, `/v1/auth/login`,
-      etc.) all 404. Need real API docs / a token from 3Bee support before
-      this can be wired up correctly.
+- [x] `xnatura_biodiversity` — **working**. Real base URL/auth/paths found
+      2026-08-24 via the platform's Settings → API keys page (X-Api-Key
+      header) plus the live OpenAPI spec at platform.3bee.com/openapi.json
+      (720 routes, title "Oasi"). `api.3bee.com`, used in the original
+      Dashboard route, is a dead end — the real host is `platform.3bee.com`.
+      Routes are scoped `/v1/monitoring/{user_slug}/sites/{site_id}/...`;
+      `user_slug=earth-surveillance`, `site_id=101561` (Xoco Gourmet, El
+      Lago — COCABO has no 3Bee site). See `src/lib/xnatura.ts` for details.
 - [ ] Confirm real EarthSurveillance API paths for the `gemini`/`gaian` modules
       (`src/lib/earthsurveillance.ts` currently guesses `/gemini/chat`) — untested
 - [ ] Wire up a Cloud Build trigger for `mcp-server/**`
