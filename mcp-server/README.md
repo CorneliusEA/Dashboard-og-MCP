@@ -51,11 +51,18 @@ values from the Dashboard/EarthSurveillance repos — do not regenerate):
 
 Tested 2026-08-24 against real credentials:
 
-- [x] `sentinel_ndvi` — **working**. Fixed two real bugs found while testing
-      (also present in the original Dashboard `src/lib/sentinel.ts` — worth
-      porting the fix back there): fixed 0.0001° resx/resy overflowed
-      Sentinel Hub's 2500px cap on wider bboxes; evalscript was missing the
+- [x] `sentinel_ndvi` — **working**, tested live through the actual MCP
+      protocol (`tools/call`), not just the lib function. Fixed two real
+      bugs found while testing (also ported back to the Dashboard repo's
+      `src/lib/sentinel.ts`): fixed 0.0001° resx/resy overflowed Sentinel
+      Hub's 2500px cap on wider bboxes; evalscript was missing the
       `dataMask` output required by the Statistics API.
+      Known limitation (not a bug): `estate: "xoco"` can return all-null
+      NDVI — the fixed 30-day window + 30% max cloud coverage sometimes
+      has zero matching Sentinel-2 acquisitions for Xoco's small bbox
+      during Nicaragua's rainy season. Cocabo's larger bbox rarely hits
+      this. A future improvement could widen the window or relax cloud
+      coverage per-estate, or expose both as tool arguments.
 - [x] `forsler_maps` — **working**, no changes needed.
 - [ ] `soilsense_data` — **blocked**: `api.staging.soilsense.io` times out
       at the connection level from this environment (DNS resolves fine).
@@ -69,15 +76,21 @@ Tested 2026-08-24 against real credentials:
       Routes are scoped `/v1/monitoring/{user_slug}/sites/{site_id}/...`;
       `user_slug=earth-surveillance`, `site_id=101561` (Xoco Gourmet, El
       Lago — COCABO has no 3Bee site). See `src/lib/xnatura.ts` for details.
-- [ ] `earthsurveillance_rag_chat` — **code confirmed against source, not yet
-      tested live**. Read the EarthSurveillance backend directly (local
-      checkout of github.com/CorneliusEA/EarthSurveillance): endpoint is
-      `POST /api/v1/gemini/chat`, auth is `POST /api/v1/auth/sign-in/`
-      (email+password -> Bearer JWT, not a static token), and messages
-      must be Gemini-style `{role, parts:[{text}]}`. Blocked on a real,
-      email-verified EarthSurveillance account to log in with — a
-      dedicated service account is recommended over a personal login.
-      Set `EARTHSURVEILLANCE_EMAIL`/`EARTHSURVEILLANCE_PASSWORD` once
-      available and re-test.
+- [x] `earthsurveillance_rag_chat` — **working**, tested live through the
+      actual MCP protocol. Two real issues found and fixed vs. the
+      original guess:
+      1. Endpoint/auth confirmed by reading the backend source directly
+         (local checkout of github.com/CorneliusEA/EarthSurveillance):
+         `POST /api/v1/gemini/chat`, login via `POST /api/v1/auth/sign-in/`
+         (email+password -> Bearer JWT, not a static token), Gemini-style
+         messages `{role, parts:[{text}]}`.
+      2. **`api.earthsurveillance.ai` (named in the project brief as the
+         public API host) does not resolve in DNS at all (NXDOMAIN).**
+         The real, live API is served from the main domain,
+         `www.earthsurveillance.ai/api/v1/...`. Worth fixing the DNS/docs
+         at some point, but the connector works against the real host now.
+      Currently tested with a personal login
+      (`EARTHSURVEILLANCE_EMAIL`/`PASSWORD`) — recommend swapping to a
+      dedicated service account before production use.
 - [ ] Wire up a Cloud Build trigger for `mcp-server/**`
 - [ ] Add Sentinel/Forsler/SoilSense tools for the Xoco estate, not just Cocabo, once bboxes are confirmed

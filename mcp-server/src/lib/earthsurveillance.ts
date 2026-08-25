@@ -5,7 +5,12 @@
  * GoDaddy (127.0.0.1:5433, not internet-exposed).
  *
  * Confirmed 2026-08-25 by reading the EarthSurveillance backend source
- * (github.com/CorneliusEA/EarthSurveillance, local checkout):
+ * (github.com/CorneliusEA/EarthSurveillance, local checkout) and testing
+ * live:
+ *   - Real base URL is https://www.earthsurveillance.ai — NOT
+ *     api.earthsurveillance.ai, which doesn't resolve in DNS at all
+ *     (NXDOMAIN) despite being named in the project brief as the public
+ *     API host. The FastAPI backend is served from the main domain.
  *   - All routes are mounted under /api/v1 (app/main.py)
  *   - Auth: POST /api/v1/auth/sign-in/ with {email, password} -> a JWT
  *     access_token (Bearer). Login fails until the account's email is
@@ -20,7 +25,7 @@
  *     needed.
  */
 
-const BASE_URL = (process.env.EARTHSURVEILLANCE_API_BASE_URL ?? 'https://api.earthsurveillance.ai').replace(/\/$/, '')
+const BASE_URL = (process.env.EARTHSURVEILLANCE_API_BASE_URL ?? 'https://www.earthsurveillance.ai').replace(/\/$/, '')
 const API_PREFIX = '/api/v1'
 
 let cachedToken: { token: string; expires: number } | null = null
