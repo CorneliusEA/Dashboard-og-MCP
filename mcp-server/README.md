@@ -69,7 +69,15 @@ Tested 2026-08-24 against real credentials:
       Routes are scoped `/v1/monitoring/{user_slug}/sites/{site_id}/...`;
       `user_slug=earth-surveillance`, `site_id=101561` (Xoco Gourmet, El
       Lago — COCABO has no 3Bee site). See `src/lib/xnatura.ts` for details.
-- [ ] Confirm real EarthSurveillance API paths for the `gemini`/`gaian` modules
-      (`src/lib/earthsurveillance.ts` currently guesses `/gemini/chat`) — untested
+- [ ] `earthsurveillance_rag_chat` — **code confirmed against source, not yet
+      tested live**. Read the EarthSurveillance backend directly (local
+      checkout of github.com/CorneliusEA/EarthSurveillance): endpoint is
+      `POST /api/v1/gemini/chat`, auth is `POST /api/v1/auth/sign-in/`
+      (email+password -> Bearer JWT, not a static token), and messages
+      must be Gemini-style `{role, parts:[{text}]}`. Blocked on a real,
+      email-verified EarthSurveillance account to log in with — a
+      dedicated service account is recommended over a personal login.
+      Set `EARTHSURVEILLANCE_EMAIL`/`EARTHSURVEILLANCE_PASSWORD` once
+      available and re-test.
 - [ ] Wire up a Cloud Build trigger for `mcp-server/**`
 - [ ] Add Sentinel/Forsler/SoilSense tools for the Xoco estate, not just Cocabo, once bboxes are confirmed

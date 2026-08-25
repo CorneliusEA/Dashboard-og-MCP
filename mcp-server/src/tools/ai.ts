@@ -8,8 +8,9 @@ export function registerAiTool(server: McpServer) {
     {
       title: 'EarthSurveillance RAG chat',
       description:
-        'Ask a question over EarthSurveillance\'s ingested sensor/NDVI data via its Gemini RAG pipeline, ' +
-        'reached over the public api.earthsurveillance.ai API (never a direct DB connection).',
+        "Ask a question over EarthSurveillance's ingested sensor/NDVI data via its Gemini RAG pipeline, " +
+        'reached over the public api.earthsurveillance.ai API (never a direct DB connection). ' +
+        'Requires EARTHSURVEILLANCE_EMAIL/PASSWORD for a real, email-verified account.',
       inputSchema: {
         query: z.string().describe('Natural-language question to answer via retrieval over ingested data'),
       },
