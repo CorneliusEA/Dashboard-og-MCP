@@ -1,0 +1,428 @@
+{
+  "mcp-server/package.json": {
+    "mtime": 1787587549.7521162,
+    "seen": 1787637543.421053,
+    "ast_hash": "8489d43ef40980c66f2fe0a847f39c53",
+    "semantic_hash": "8489d43ef40980c66f2fe0a847f39c53"
+  },
+  "mcp-server/src/index.ts": {
+    "mtime": 1787587605.4350538,
+    "seen": 1787637543.421056,
+    "ast_hash": "8384e41f37cbaebaf1767f2295c5d9da",
+    "semantic_hash": "8384e41f37cbaebaf1767f2295c5d9da"
+  },
+  "mcp-server/src/lib/earthsurveillance.ts": {
+    "mtime": 1787636003.8669567,
+    "seen": 1787637543.421057,
+    "ast_hash": "5610e4fc528669d8a8bc6539e7feacd3",
+    "semantic_hash": "5610e4fc528669d8a8bc6539e7feacd3"
+  },
+  "mcp-server/src/lib/forsler.ts": {
+    "mtime": 1787587575.5892787,
+    "seen": 1787637543.421058,
+    "ast_hash": "f8fd433b032c2cbf57ecfe53f2868657",
+    "semantic_hash": "f8fd433b032c2cbf57ecfe53f2868657"
+  },
+  "mcp-server/src/lib/sentinel.ts": {
+    "mtime": 1787590820.685861,
+    "seen": 1787637543.421058,
+    "ast_hash": "f669842a34bda7c24c2a53e2c60977ca",
+    "semantic_hash": "f669842a34bda7c24c2a53e2c60977ca"
+  },
+  "mcp-server/src/lib/soilsense.ts": {
+    "mtime": 1787587584.30587,
+    "seen": 1787637543.4210591,
+    "ast_hash": "7358357ddfe0e0d6834d75045d9f760e",
+    "semantic_hash": "7358357ddfe0e0d6834d75045d9f760e"
+  },
+  "mcp-server/src/lib/xnatura.ts": {
+    "mtime": 1787592470.9754448,
+    "seen": 1787637543.4210591,
+    "ast_hash": "05879460a8e9a30791df8130844fdc4d",
+    "semantic_hash": "05879460a8e9a30791df8130844fdc4d"
+  },
+  "mcp-server/src/tools/ai.ts": {
+    "mtime": 1787635273.677325,
+    "seen": 1787637543.42106,
+    "ast_hash": "a8ef2526b8bd78073d7a79db99796fde",
+    "semantic_hash": "a8ef2526b8bd78073d7a79db99796fde"
+  },
+  "mcp-server/src/tools/forsler.ts": {
+    "mtime": 1787587613.555303,
+    "seen": 1787637543.42106,
+    "ast_hash": "b41500df0a812316c4c283c6784b509f",
+    "semantic_hash": "b41500df0a812316c4c283c6784b509f"
+  },
+  "mcp-server/src/tools/sentinel.ts": {
+    "mtime": 1787587609.1821775,
+    "seen": 1787637543.421061,
+    "ast_hash": "b313ffb38c3789fffdb761d9bb4f30b1",
+    "semantic_hash": "b313ffb38c3789fffdb761d9bb4f30b1"
+  },
+  "mcp-server/src/tools/soilsense.ts": {
+    "mtime": 1787587617.3896132,
+    "seen": 1787637543.421061,
+    "ast_hash": "b04d92b7b409038b69298515f06a755f",
+    "semantic_hash": "b04d92b7b409038b69298515f06a755f"
+  },
+  "mcp-server/src/tools/xnatura.ts": {
+    "mtime": 1787587619.5369232,
+    "seen": 1787637543.421062,
+    "ast_hash": "c8df681427d224dbde68480fee1465d9",
+    "semantic_hash": "c8df681427d224dbde68480fee1465d9"
+  },
+  "mcp-server/tsconfig.json": {
+    "mtime": 1787587667.560041,
+    "seen": 1787637543.421062,
+    "ast_hash": "af9cb4b05d85a8c669acf1bceef4b356",
+    "semantic_hash": "af9cb4b05d85a8c669acf1bceef4b356"
+  },
+  "next.config.mjs": {
+    "mtime": 1787587209.5463974,
+    "seen": 1787637543.421063,
+    "ast_hash": "c08a646e1d0cc6b5d386c3d0e61832d2",
+    "semantic_hash": "c08a646e1d0cc6b5d386c3d0e61832d2"
+  },
+  "package.json": {
+    "mtime": 1787587209.5471447,
+    "seen": 1787637543.421063,
+    "ast_hash": "f84888cf94a6ad08c2cfc30f9f38fa7f",
+    "semantic_hash": "f84888cf94a6ad08c2cfc30f9f38fa7f"
+  },
+  "src/app/admin/page.tsx": {
+    "mtime": 1787587209.547752,
+    "seen": 1787637543.421064,
+    "ast_hash": "6f710b4dcf963527dbeea4bcc37fdb3f",
+    "semantic_hash": "6f710b4dcf963527dbeea4bcc37fdb3f"
+  },
+  "src/app/api/admin/users/[id]/route.ts": {
+    "mtime": 1787587209.5481763,
+    "seen": 1787637543.421064,
+    "ast_hash": "1362ddd486e36e214148d583160892ac",
+    "semantic_hash": "1362ddd486e36e214148d583160892ac"
+  },
+  "src/app/api/admin/users/route.ts": {
+    "mtime": 1787587209.5482707,
+    "seen": 1787637543.4210649,
+    "ast_hash": "145bada5bb125ac579e8a37f1899e260",
+    "semantic_hash": "145bada5bb125ac579e8a37f1899e260"
+  },
+  "src/app/api/auth/[...nextauth]/route.ts": {
+    "mtime": 1787587209.548466,
+    "seen": 1787637543.4210649,
+    "ast_hash": "0ca1fa65c694c83d511461c80d2b43f9",
+    "semantic_hash": "0ca1fa65c694c83d511461c80d2b43f9"
+  },
+  "src/app/api/biodiversity/route.ts": {
+    "mtime": 1787587209.548614,
+    "seen": 1787637543.421066,
+    "ast_hash": "66944a1f394b7b7316a5aecba81124b1",
+    "semantic_hash": "66944a1f394b7b7316a5aecba81124b1"
+  },
+  "src/app/api/carbon/route.ts": {
+    "mtime": 1787587209.5487478,
+    "seen": 1787637543.421066,
+    "ast_hash": "9711620308f92681f8e4591e747a8a34",
+    "semantic_hash": "9711620308f92681f8e4591e747a8a34"
+  },
+  "src/app/api/communities/route.ts": {
+    "mtime": 1787587209.5488896,
+    "seen": 1787637543.421067,
+    "ast_hash": "2cb79e8d529b6342b9034b255234a803",
+    "semantic_hash": "2cb79e8d529b6342b9034b255234a803"
+  },
+  "src/app/api/eledger/route.ts": {
+    "mtime": 1787587209.5490227,
+    "seen": 1787637543.421068,
+    "ast_hash": "c058ba681598c194636abe912c9db847",
+    "semantic_hash": "c058ba681598c194636abe912c9db847"
+  },
+  "src/app/api/finance/route.ts": {
+    "mtime": 1787587209.5491478,
+    "seen": 1787637543.421068,
+    "ast_hash": "a4ce162b40b800847782d9a704c864e8",
+    "semantic_hash": "a4ce162b40b800847782d9a704c864e8"
+  },
+  "src/app/api/overview/route.ts": {
+    "mtime": 1787587209.54928,
+    "seen": 1787637543.4210691,
+    "ast_hash": "c0e5ffb981865e562c0bdcccf7286c4c",
+    "semantic_hash": "c0e5ffb981865e562c0bdcccf7286c4c"
+  },
+  "src/app/api/sentinel/route.ts": {
+    "mtime": 1787587209.5494065,
+    "seen": 1787637543.4210691,
+    "ast_hash": "2c6f63b769501469aebc6c4052ce4196",
+    "semantic_hash": "2c6f63b769501469aebc6c4052ce4196"
+  },
+  "src/app/api/xoco/carbon/route.ts": {
+    "mtime": 1787587209.5495806,
+    "seen": 1787637543.42107,
+    "ast_hash": "d51b925d0936aec02e3e304808417c0e",
+    "semantic_hash": "d51b925d0936aec02e3e304808417c0e"
+  },
+  "src/app/api/xoco/forsler/route.ts": {
+    "mtime": 1787587209.5497003,
+    "seen": 1787637543.42107,
+    "ast_hash": "e62bf9d97a742acfcab674f8f4a06c1a",
+    "semantic_hash": "e62bf9d97a742acfcab674f8f4a06c1a"
+  },
+  "src/app/api/xoco/map/route.ts": {
+    "mtime": 1787587209.5498235,
+    "seen": 1787637543.42107,
+    "ast_hash": "c320c3071dfc89e4a5e02784ffd28e21",
+    "semantic_hash": "c320c3071dfc89e4a5e02784ffd28e21"
+  },
+  "src/app/api/xoco/soil/route.ts": {
+    "mtime": 1787587209.549943,
+    "seen": 1787637543.421071,
+    "ast_hash": "98332c4c2b01208b79f7edd42c944aa8",
+    "semantic_hash": "98332c4c2b01208b79f7edd42c944aa8"
+  },
+  "src/app/api/xoco/xnatura/route.ts": {
+    "mtime": 1787592592.6818547,
+    "seen": 1787637543.4210718,
+    "ast_hash": "910057fae4b7e60a6ed7dd85acf9ddd7",
+    "semantic_hash": "910057fae4b7e60a6ed7dd85acf9ddd7"
+  },
+  "src/app/cocabo/page.tsx": {
+    "mtime": 1787587209.5502124,
+    "seen": 1787637543.4210718,
+    "ast_hash": "2253e207d924944967471f1df90bfde0",
+    "semantic_hash": "2253e207d924944967471f1df90bfde0"
+  },
+  "src/app/layout.tsx": {
+    "mtime": 1787587209.550422,
+    "seen": 1787637543.421073,
+    "ast_hash": "c5a7a86ac9eadbfce4d12247b7d6760d",
+    "semantic_hash": "c5a7a86ac9eadbfce4d12247b7d6760d"
+  },
+  "src/app/login/page.tsx": {
+    "mtime": 1787587209.5505557,
+    "seen": 1787637543.421073,
+    "ast_hash": "6054668bcdfc1074df36f65521c2f0ef",
+    "semantic_hash": "6054668bcdfc1074df36f65521c2f0ef"
+  },
+  "src/app/page.tsx": {
+    "mtime": 1787587209.5506437,
+    "seen": 1787637543.421074,
+    "ast_hash": "76a761a80f85500415799a0bce8b26d2",
+    "semantic_hash": "76a761a80f85500415799a0bce8b26d2"
+  },
+  "src/app/providers.tsx": {
+    "mtime": 1787587209.5507221,
+    "seen": 1787637543.421074,
+    "ast_hash": "b3049aa087235675b8b54df4943749c5",
+    "semantic_hash": "b3049aa087235675b8b54df4943749c5"
+  },
+  "src/app/xoco/page.tsx": {
+    "mtime": 1787587209.5508592,
+    "seen": 1787637543.4210749,
+    "ast_hash": "ba7dc698df93ec6490f5c9fec68e9b07",
+    "semantic_hash": "ba7dc698df93ec6490f5c9fec68e9b07"
+  },
+  "src/components/TopBar.tsx": {
+    "mtime": 1787587209.5510087,
+    "seen": 1787637543.4210749,
+    "ast_hash": "390bfc9962813e90457143057ddd88ab",
+    "semantic_hash": "390bfc9962813e90457143057ddd88ab"
+  },
+  "src/components/XocoMap.tsx": {
+    "mtime": 1787587209.5510998,
+    "seen": 1787637543.421076,
+    "ast_hash": "757b8a659cd1aaa9ca9ec0d63efcfa54",
+    "semantic_hash": "757b8a659cd1aaa9ca9ec0d63efcfa54"
+  },
+  "src/components/XocoSidebar.tsx": {
+    "mtime": 1787587209.5511882,
+    "seen": 1787637543.421076,
+    "ast_hash": "b2de3aac1458e4cd2adc0cc7740ad2fc",
+    "semantic_hash": "b2de3aac1458e4cd2adc0cc7740ad2fc"
+  },
+  "src/components/screens/Biodiversity.tsx": {
+    "mtime": 1787587209.5513508,
+    "seen": 1787637543.421077,
+    "ast_hash": "797b9c313994527914f223bb72728c1a",
+    "semantic_hash": "797b9c313994527914f223bb72728c1a"
+  },
+  "src/components/screens/Carbon.tsx": {
+    "mtime": 1787587209.5514574,
+    "seen": 1787637543.421077,
+    "ast_hash": "a037a4163be4affe04fb3bdb90d79636",
+    "semantic_hash": "a037a4163be4affe04fb3bdb90d79636"
+  },
+  "src/components/screens/ELedger.tsx": {
+    "mtime": 1787587209.5515614,
+    "seen": 1787637543.421077,
+    "ast_hash": "15f7c7afe584991b82169b64e7c4538c",
+    "semantic_hash": "15f7c7afe584991b82169b64e7c4538c"
+  },
+  "src/components/screens/EUDR.tsx": {
+    "mtime": 1787587209.5516658,
+    "seen": 1787637543.421078,
+    "ast_hash": "a4110f72c554c8b3f2dd69aff8a19b88",
+    "semantic_hash": "a4110f72c554c8b3f2dd69aff8a19b88"
+  },
+  "src/components/screens/Finance.tsx": {
+    "mtime": 1787587209.5517547,
+    "seen": 1787637543.4210792,
+    "ast_hash": "266eafbb4f3b1ceca6717af4685be477",
+    "semantic_hash": "266eafbb4f3b1ceca6717af4685be477"
+  },
+  "src/components/screens/Overview.tsx": {
+    "mtime": 1787587209.5518684,
+    "seen": 1787637543.4210792,
+    "ast_hash": "95c330b7df33408a46ef38d5a28e9901",
+    "semantic_hash": "95c330b7df33408a46ef38d5a28e9901"
+  },
+  "src/components/screens/xoco/XocoBiodiversity.tsx": {
+    "mtime": 1787587209.5520287,
+    "seen": 1787637543.42108,
+    "ast_hash": "33dc6cbe38826887e8e9b616e8c02a82",
+    "semantic_hash": "33dc6cbe38826887e8e9b616e8c02a82"
+  },
+  "src/components/screens/xoco/XocoEUDR.tsx": {
+    "mtime": 1787587209.5521402,
+    "seen": 1787637543.42108,
+    "ast_hash": "c67b991b46466d247a8dc9f16f115e0d",
+    "semantic_hash": "c67b991b46466d247a8dc9f16f115e0d"
+  },
+  "src/components/screens/xoco/XocoInventory.tsx": {
+    "mtime": 1787587209.552231,
+    "seen": 1787637543.421081,
+    "ast_hash": "f6bea2110a038be69289b175eaba9817",
+    "semantic_hash": "f6bea2110a038be69289b175eaba9817"
+  },
+  "src/components/screens/xoco/XocoManagement.tsx": {
+    "mtime": 1787587209.552324,
+    "seen": 1787637543.421081,
+    "ast_hash": "858ff6bff1136189ed889a791902519c",
+    "semantic_hash": "858ff6bff1136189ed889a791902519c"
+  },
+  "src/components/screens/xoco/XocoOverview.tsx": {
+    "mtime": 1787587209.5524092,
+    "seen": 1787637543.421082,
+    "ast_hash": "0c755a48db8cf0d5cf9551af38e0067f",
+    "semantic_hash": "0c755a48db8cf0d5cf9551af38e0067f"
+  },
+  "src/components/screens/xoco/XocoSiteLayers.tsx": {
+    "mtime": 1787587209.5525236,
+    "seen": 1787637543.421082,
+    "ast_hash": "ef835066983989a0fe40adac261a93b9",
+    "semantic_hash": "ef835066983989a0fe40adac261a93b9"
+  },
+  "src/components/screens/xoco/XocoSoil.tsx": {
+    "mtime": 1787587209.5526369,
+    "seen": 1787637543.421083,
+    "ast_hash": "62d3b9ccda25c2ad88906b26b0ca5531",
+    "semantic_hash": "62d3b9ccda25c2ad88906b26b0ca5531"
+  },
+  "src/components/ui/Card.tsx": {
+    "mtime": 1787587209.5527568,
+    "seen": 1787637543.421083,
+    "ast_hash": "c73a1689ecfde3c5b983499fe5759cf1",
+    "semantic_hash": "c73a1689ecfde3c5b983499fe5759cf1"
+  },
+  "src/components/ui/Metric.tsx": {
+    "mtime": 1787587209.5528362,
+    "seen": 1787637543.421084,
+    "ast_hash": "b332b7d7e81c8d5c00a227cf4181cd66",
+    "semantic_hash": "b332b7d7e81c8d5c00a227cf4181cd66"
+  },
+  "src/components/ui/Pill.tsx": {
+    "mtime": 1787587209.552914,
+    "seen": 1787637543.421084,
+    "ast_hash": "4bdbab6ba958b0cb580c6ba406d74014",
+    "semantic_hash": "4bdbab6ba958b0cb580c6ba406d74014"
+  },
+  "src/lib/auth.ts": {
+    "mtime": 1787587209.5530462,
+    "seen": 1787637543.421085,
+    "ast_hash": "01e63cacde03c54d08a5906504526c42",
+    "semantic_hash": "01e63cacde03c54d08a5906504526c42"
+  },
+  "src/lib/db.ts": {
+    "mtime": 1787587209.5531204,
+    "seen": 1787637543.421085,
+    "ast_hash": "2e97bd66bd1bbe0fdf2154b11cf06448",
+    "semantic_hash": "2e97bd66bd1bbe0fdf2154b11cf06448"
+  },
+  "src/lib/forsler.ts": {
+    "mtime": 1787587209.5531993,
+    "seen": 1787637543.4210858,
+    "ast_hash": "9793b8ed569cdc574a877ee55a3f76ef",
+    "semantic_hash": "9793b8ed569cdc574a877ee55a3f76ef"
+  },
+  "src/lib/sentinel.ts": {
+    "mtime": 1787591392.0099413,
+    "seen": 1787637543.4210858,
+    "ast_hash": "794185db8d5b525b16a12bcdab6adbe9",
+    "semantic_hash": "794185db8d5b525b16a12bcdab6adbe9"
+  },
+  "src/lib/soilsense.ts": {
+    "mtime": 1787587209.5533562,
+    "seen": 1787637543.421087,
+    "ast_hash": "1184d83bdcfb92a9cb267e5955862a85",
+    "semantic_hash": "1184d83bdcfb92a9cb267e5955862a85"
+  },
+  "src/lib/types.ts": {
+    "mtime": 1787587209.5534475,
+    "seen": 1787637543.421087,
+    "ast_hash": "ef5917aa9becf61ae0b5d62663d20763",
+    "semantic_hash": "ef5917aa9becf61ae0b5d62663d20763"
+  },
+  "src/lib/userStore.ts": {
+    "mtime": 1787587209.5535414,
+    "seen": 1787637543.421088,
+    "ast_hash": "fd8f478fdf57a0a48bb14d929074b74f",
+    "semantic_hash": "fd8f478fdf57a0a48bb14d929074b74f"
+  },
+  "src/lib/users.ts": {
+    "mtime": 1787587209.553632,
+    "seen": 1787637543.421088,
+    "ast_hash": "7fbc7618182451080357da25ab3522b5",
+    "semantic_hash": "7fbc7618182451080357da25ab3522b5"
+  },
+  "src/middleware.ts": {
+    "mtime": 1787587209.5537176,
+    "seen": 1787637543.421089,
+    "ast_hash": "4e67b33caf90c45c9bca93d2f5d5ae45",
+    "semantic_hash": "4e67b33caf90c45c9bca93d2f5d5ae45"
+  },
+  "tsconfig.json": {
+    "mtime": 1787587209.5538003,
+    "seen": 1787637543.421089,
+    "ast_hash": "cbd1e6e28e5d74beb737ddb32e68cf7c",
+    "semantic_hash": "cbd1e6e28e5d74beb737ddb32e68cf7c"
+  },
+  "COCABO_ES_Dashboard (1).html": {
+    "mtime": 1787587209.546047,
+    "seen": 1787637543.4210901,
+    "ast_hash": "e870bb43c1ed01febc893b97294d55be",
+    "semantic_hash": "e870bb43c1ed01febc893b97294d55be"
+  },
+  "README.md": {
+    "mtime": 1787587209.546229,
+    "seen": 1787637543.4210901,
+    "ast_hash": "6cfc1b9935ca4deb4ce08d37de4c5753",
+    "semantic_hash": "6cfc1b9935ca4deb4ce08d37de4c5753"
+  },
+  "cloudbuild.yaml": {
+    "mtime": 1787587209.5463164,
+    "seen": 1787637543.421091,
+    "ast_hash": "db06e04ff8226c8fc21a5d0d745d9282",
+    "semantic_hash": "db06e04ff8226c8fc21a5d0d745d9282"
+  },
+  "mcp-server/README.md": {
+    "mtime": 1787636111.524679,
+    "seen": 1787637543.421091,
+    "ast_hash": "8d12e6d1c42373608d28856b8c71142f",
+    "semantic_hash": "8d12e6d1c42373608d28856b8c71142f"
+  },
+  "mcp-server/cloudbuild.yaml": {
+    "mtime": 1787587634.473293,
+    "seen": 1787637543.421091,
+    "ast_hash": "f159e8ff95de1b408920f546310255e3",
+    "semantic_hash": "f159e8ff95de1b408920f546310255e3"
+  }
+}
