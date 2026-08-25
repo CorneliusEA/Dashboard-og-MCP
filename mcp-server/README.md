@@ -36,16 +36,32 @@ Health check: `GET /health`.
 
 Deployed as its own Cloud Run service (`gaian-data-lake-mcp`), separate
 from `dashboard`, using `mcp-server/cloudbuild.yaml`. Point a Cloud Build
-trigger at this file with an included-files filter on `mcp-server/**`.
+trigger at this file with an included-files filter on `mcp-server/**`, e.g.:
+
+```bash
+gcloud builds triggers create github \
+  --name=gaian-data-lake-mcp \
+  --repo-name=Dashboard --repo-owner=CorneliusEA \
+  --branch-pattern='^main$' \
+  --included-files='mcp-server/**' \
+  --build-config=mcp-server/cloudbuild.yaml
+```
+
+(No `gcloud`/Docker daemon available in this environment to run this or
+verify the deploy — run it from wherever the `dashboard` trigger was
+originally created, then set the env vars below on the resulting service.)
 
 Environment variables to set on the Cloud Run service (duplicate existing
 values from the Dashboard/EarthSurveillance repos — do not regenerate):
 
 - `SENTINEL_CLIENT_ID`, `SENTINEL_CLIENT_SECRET`
 - `FORSLER_API_KEY`, `FORSLER_ORGANIZATION_ID`, `FORSLER_BASE_URL`
-- `SOILSENSE_BASE_URL`, `SOILSENSE_EMAIL`, `SOILSENSE_PASSWORD`
 - `XNATURA_API_TOKEN`, `XNATURA_SITE_ID`
 - `EARTHSURVEILLANCE_API_BASE_URL`, `EARTHSURVEILLANCE_API_TOKEN`
+
+`SOILSENSE_BASE_URL`/`EMAIL`/`PASSWORD` are **not required for phase 1** —
+see Status/TODO below. The server starts and serves the other four tools
+fine with these unset; `soilsense_data` just fails when called until phase 2.
 
 ## Status / TODO
 
@@ -64,10 +80,13 @@ Tested 2026-08-24 against real credentials:
       this. A future improvement could widen the window or relax cloud
       coverage per-estate, or expose both as tool arguments.
 - [x] `forsler_maps` — **working**, no changes needed.
-- [ ] `soilsense_data` — **blocked**: `api.staging.soilsense.io` times out
-      at the connection level from this environment (DNS resolves fine).
-      Other hosts work, so this looks like the staging server itself being
-      down or IP-restricted, not a code issue. Re-test once confirmed reachable.
+- [ ] `soilsense_data` — **deferred to phase 2**. `api.staging.soilsense.io`
+      times out at the connection level from this environment (DNS resolves
+      fine). Other hosts work, so this looks like the staging server itself
+      being down or IP-restricted, not a code issue. Not a blocker for
+      phase 1 launch: the tool is registered but simply fails when called
+      until `SOILSENSE_EMAIL`/`PASSWORD` are set and the staging host is
+      confirmed reachable — re-test then.
 - [x] `xnatura_biodiversity` — **working**. Real base URL/auth/paths found
       2026-08-24 via the platform's Settings → API keys page (X-Api-Key
       header) plus the live OpenAPI spec at platform.3bee.com/openapi.json
@@ -92,5 +111,15 @@ Tested 2026-08-24 against real credentials:
       Currently tested with a personal login
       (`EARTHSURVEILLANCE_EMAIL`/`PASSWORD`) — recommend swapping to a
       dedicated service account before production use.
-- [ ] Wire up a Cloud Build trigger for `mcp-server/**`
+- [ ] Wire up the Cloud Build trigger for `mcp-server/**` (command above) —
+      needs `gcloud` access, not runnable from this environment
 - [ ] Add Sentinel/Forsler/SoilSense tools for the Xoco estate, not just Cocabo, once bboxes are confirmed
+
+## Phase 1 vs phase 2
+
+**Phase 1 (this launch):** sentinel, forsler, xnatura, earthsurveillance —
+all tested working. SoilSense ships registered-but-unconfigured; calling
+it fails cleanly until phase 2 sets its env vars and confirms the staging
+host is reachable.
+**Phase 2:** SoilSense, Xoco-estate bboxes, and Anders' longer source list
+(Global Forest Watch, ESA, CarbonTrace).
