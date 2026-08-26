@@ -1,10 +1,13 @@
 # Gaian Data Lake MCP Connector
 
-MCP server that wraps the five live data sources agreed in scope — it does
-**not** introduce a new data platform. It calls existing, already-deployed
-APIs the same way the Dashboard frontend does today.
+MCP server that wraps live data sources for EarthSurveillance's land
+monitoring — it does **not** introduce a new data platform. It calls
+existing, already-deployed APIs the same way the Dashboard frontend does
+today, plus free public data sources that need no dedicated backend.
 
 ## Tools
+
+Original five (phase 1 scope):
 
 | Tool | Source | Notes |
 |---|---|---|
@@ -13,6 +16,16 @@ APIs the same way the Dashboard frontend does today.
 | `soilsense_data` | SoilSense | Direct call. **No hardcoded credential fallback** — set `SOILSENSE_EMAIL`/`SOILSENSE_PASSWORD` or calls fail |
 | `xnatura_biodiversity` | 3Bee / XNatura | Direct call, site 101561 |
 | `earthsurveillance_rag_chat` | EarthSurveillance Gemini RAG | Via public `api.earthsurveillance.ai` only — placeholder endpoint, confirm real path before use |
+
+Free-data enrichment tools (added 2026-08-26, no cost, no dedicated backend):
+
+| Tool | Source | Notes |
+|---|---|---|
+| `weather` | Open-Meteo | No API key. Forecast + historical daily weather |
+| `soilgrids` | ISRIC SoilGrids | No API key. Modeled global soil properties (250m), covers ground SoilSense sensors don't reach |
+| `gbif_biodiversity` | GBIF | No API key. Global open occurrence records, complements 3Bee/XNatura |
+| `elevation` | OpenTopoData (SRTM30m) | No API key. Public instance, ~1 req/sec rate limit |
+| `fire_alerts` | NASA FIRMS | **Requires `FIRMS_MAP_KEY`** (free instant signup at firms.modaps.eosdis.nasa.gov/api/area) — untested against a real key so far |
 
 ## Architecture rule
 
@@ -35,33 +48,31 @@ Health check: `GET /health`.
 ## Deploy
 
 Deployed as its own Cloud Run service (`gaian-data-lake-mcp`), separate
-from `dashboard`, using `mcp-server/cloudbuild.yaml`. Point a Cloud Build
-trigger at this file with an included-files filter on `mcp-server/**`, e.g.:
+from `dashboard`, live at
+`https://gaian-data-lake-mcp-489214757597.europe-west1.run.app/mcp`.
+Cloud Build trigger `mcp-server-deploy` (project `primal-stock-495416-r7`)
+watches `mcp-server/**` on pushes to `main` and auto-deploys via
+`mcp-server/cloudbuild.yaml` — confirmed working 2026-08-25, no manual
+deploy step needed once a PR is merged to `main`.
 
-```bash
-gcloud builds triggers create github \
-  --name=gaian-data-lake-mcp \
-  --repo-name=Dashboard --repo-owner=CorneliusEA \
-  --branch-pattern='^main$' \
-  --included-files='mcp-server/**' \
-  --build-config=mcp-server/cloudbuild.yaml
-```
-
-(No `gcloud`/Docker daemon available in this environment to run this or
-verify the deploy — run it from wherever the `dashboard` trigger was
-originally created, then set the env vars below on the resulting service.)
-
-Environment variables to set on the Cloud Run service (duplicate existing
+Environment variables set on the Cloud Run service (duplicate existing
 values from the Dashboard/EarthSurveillance repos — do not regenerate):
 
 - `SENTINEL_CLIENT_ID`, `SENTINEL_CLIENT_SECRET`
 - `FORSLER_API_KEY`, `FORSLER_ORGANIZATION_ID`, `FORSLER_BASE_URL`
-- `XNATURA_API_TOKEN`, `XNATURA_SITE_ID`
-- `EARTHSURVEILLANCE_API_BASE_URL`, `EARTHSURVEILLANCE_API_TOKEN`
+- `XNATURA_API_KEY`, `XNATURA_SITE_ID`, `XNATURA_USER_SLUG`, `XNATURA_BASE_URL`
+- `EARTHSURVEILLANCE_API_BASE_URL`, `EARTHSURVEILLANCE_EMAIL`, `EARTHSURVEILLANCE_PASSWORD`
 
 `SOILSENSE_BASE_URL`/`EMAIL`/`PASSWORD` are **not required for phase 1** —
-see Status/TODO below. The server starts and serves the other four tools
-fine with these unset; `soilsense_data` just fails when called until phase 2.
+see Status/TODO below. The server starts and serves the other tools fine
+with these unset; `soilsense_data` just fails when called until phase 2.
+
+`FIRMS_MAP_KEY` is optional — only `fire_alerts` needs it, everything else
+works without it. Get one free at firms.modaps.eosdis.nasa.gov/api/area.
+
+**Use `--update-env-vars` when adding/changing individual vars on the live
+service, not `--set-env-vars`/`--env-vars-file`** — the latter two *replace*
+the entire env var list and will silently unset every other credential.
 
 ## Status / TODO
 
@@ -111,9 +122,16 @@ Tested 2026-08-24 against real credentials:
       Currently tested with a personal login
       (`EARTHSURVEILLANCE_EMAIL`/`PASSWORD`) — recommend swapping to a
       dedicated service account before production use.
-- [ ] Wire up the Cloud Build trigger for `mcp-server/**` (command above) —
-      needs `gcloud` access, not runnable from this environment
+- [x] Cloud Build trigger wired and confirmed working (2026-08-25) — see Deploy above.
 - [ ] Add Sentinel/Forsler/SoilSense tools for the Xoco estate, not just Cocabo, once bboxes are confirmed
+
+Tested 2026-08-26 (free enrichment tools), all against real live requests through the actual MCP protocol, not just the lib function:
+
+- [x] `weather` — **working**. Both `forecast` and lookup via estate center-point tested against Cocabo/Xoco.
+- [x] `soilgrids` — **working**. Per-property `d_factor` unscaling verified against the raw API response (varies per property, e.g. 10 for pH/clay, 100 for nitrogen — do not hardcode one factor).
+- [x] `gbif_biodiversity` — **working**. `species_summary` does a facet query then N follow-up species-name lookups (one per top result) to resolve numeric species keys to real names — adds latency but numeric-only output isn't useful on its own.
+- [x] `elevation` — **working**. Public OpenTopoData instance, no key, ~1 req/sec rate limit — fine for occasional per-estate lookups, would need a paid/self-hosted instance for high call volume.
+- [ ] `fire_alerts` — **untested**, no `FIRMS_MAP_KEY` obtained yet. Code follows the documented FIRMS Area API CSV format; fails cleanly with a clear "not configured" message when the key is missing. Get a free key and re-test before relying on it.
 
 ## Phase 1 vs phase 2
 
@@ -121,5 +139,19 @@ Tested 2026-08-24 against real credentials:
 all tested working. SoilSense ships registered-but-unconfigured; calling
 it fails cleanly until phase 2 sets its env vars and confirms the staging
 host is reachable.
-**Phase 2:** SoilSense, Xoco-estate bboxes, and Anders' longer source list
-(Global Forest Watch, ESA, CarbonTrace).
+**Phase 1.5 (2026-08-26):** weather, soilgrids, gbif_biodiversity, elevation
+— all free, no key required, tested working. fire_alerts added but needs
+a `FIRMS_MAP_KEY` before it can be tested/used.
+**Phase 2:** SoilSense (blocked externally — see below), Xoco-estate bboxes,
+and Anders' longer source list (Global Forest Watch, ESA, CarbonTrace).
+
+### SoilSense — external blocker, not a code issue
+
+As of 2026-08-25, tested with real credentials set on the live Cloud Run
+service (not just locally): the call now gets past auth-configuration and
+fails with a generic `fetch failed` at the network layer — same failure
+from Cloud Run's IP as from a developer laptop. This means it's not a
+credentials problem, it's `api.staging.soilsense.io` itself being down or
+IP-restricted. Needs someone to confirm with SoilSense whether the staging
+server is up, and if there's an IP allowlist, whether Cloud Run's egress
+IP needs to be added to it.
