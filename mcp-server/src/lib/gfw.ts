@@ -33,11 +33,39 @@ function bboxToGeoJSON(bbox: [number, number, number, number]) {
   }
 }
 
+// GFW's `/dataset/{name}/latest/query` is deprecated and redirects twice
+// (-> /{version}/query -> /{version}/query/json). The x-api-key header gets
+// dropped somewhere in that second hop — confirmed by testing: following
+// the redirect chain always fails auth, but calling the final resolved
+// /{version}/query/json URL directly with the same key works. So resolve
+// the real version first (via an unauthenticated manual-redirect probe,
+// cached per dataset) and call query/json directly, never through "latest".
+const versionCache = new Map<string, string>()
+
+async function resolveVersion(dataset: string): Promise<string> {
+  const cached = versionCache.get(dataset)
+  if (cached) return cached
+
+  const res = await fetch(`https://data-api.globalforestwatch.org/dataset/${dataset}/latest/query`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sql: 'SELECT 1' }),
+    redirect: 'manual',
+  })
+  const location = res.headers.get('location')
+  const match = location?.match(/\/dataset\/[^/]+\/(v[\d.]+)\/query/)
+  if (!match) throw new Error(`GFW: could not resolve latest version for dataset "${dataset}"`)
+
+  versionCache.set(dataset, match[1])
+  return match[1]
+}
+
 async function query(dataset: string, sql: string, bbox: [number, number, number, number]): Promise<any> {
   const apiKey = process.env.GFW_API_KEY
   if (!apiKey) throw new Error('GFW: GFW_API_KEY not configured — see README for the MyGFW account -> auth token -> apikey steps')
 
-  const res = await fetch(`https://data-api.globalforestwatch.org/dataset/${dataset}/latest/query`, {
+  const version = await resolveVersion(dataset)
+  const res = await fetch(`https://data-api.globalforestwatch.org/dataset/${dataset}/${version}/query/json`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
     body: JSON.stringify({ sql, geometry: bboxToGeoJSON(bbox) }),
@@ -53,12 +81,17 @@ export interface TreeCoverLossYear {
 }
 
 export async function fetchTreeCoverLoss(bbox: [number, number, number, number]): Promise<TreeCoverLossYear[]> {
+  // GFW's query engine doesn't support IS NOT NULL (errors with "Unsupported
+  // filter operator: exists") — filter out the null-year group client-side
+  // instead of in SQL.
   const rows = await query(
     'umd_tree_cover_loss',
-    'SELECT umd_tree_cover_loss__year AS year, SUM(area__ha) AS area_ha FROM data WHERE umd_tree_cover_loss__year IS NOT NULL GROUP BY umd_tree_cover_loss__year ORDER BY umd_tree_cover_loss__year',
+    'SELECT umd_tree_cover_loss__year AS year, SUM(area__ha) AS area_ha FROM data GROUP BY umd_tree_cover_loss__year ORDER BY umd_tree_cover_loss__year',
     bbox,
   )
-  return (rows ?? []).map((r: any) => ({ year: r.year, areaHa: r.area_ha }))
+  return (rows ?? [])
+    .filter((r: any) => r.year != null)
+    .map((r: any) => ({ year: r.year, areaHa: r.area_ha }))
 }
 
 export interface DeforestationAlertsSummary {
