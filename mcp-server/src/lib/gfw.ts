@@ -35,7 +35,7 @@ function bboxToGeoJSON(bbox: [number, number, number, number]) {
 
 async function query(dataset: string, sql: string, bbox: [number, number, number, number]): Promise<any> {
   const apiKey = process.env.GFW_API_KEY
-  if (!apiKey) throw new Error('GFW: GFW_API_KEY not configured — get a free key at globalforestwatch.org (My GFW → Developer)')
+  if (!apiKey) throw new Error('GFW: GFW_API_KEY not configured — see README for the MyGFW account -> auth token -> apikey steps')
 
   const res = await fetch(`https://data-api.globalforestwatch.org/dataset/${dataset}/latest/query`, {
     method: 'POST',

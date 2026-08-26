@@ -27,7 +27,7 @@ Free-data enrichment tools (added 2026-08-26, no cost, no dedicated backend):
 | `elevation` | OpenTopoData (SRTM30m) | No API key. Public instance, ~1 req/sec rate limit |
 | `fire_alerts` | NASA FIRMS | **Requires `FIRMS_MAP_KEY`** (free instant signup at firms.modaps.eosdis.nasa.gov/api/area) — tested working 2026-08-26 |
 | `sentinel_sar` | Sentinel Hub (Sentinel-1) | Same creds as `sentinel_ndvi`. Cloud cover-independent, sensitive to soil/canopy moisture |
-| `global_forest_watch` | GFW Data API | **Requires `GFW_API_KEY`** (free self-serve signup at globalforestwatch.org → My GFW → Developer) — untested against a real key so far |
+| `global_forest_watch` | GFW Data API | **Requires `GFW_API_KEY`** (free but multi-step — MyGFW account → auth token → create key, see confirmed steps in Status/TODO below) — untested against a real key so far |
 
 Investigated and **not** added, with reasons:
 
@@ -142,7 +142,12 @@ Tested 2026-08-26 (free enrichment tools), all against real live requests throug
 - [x] `elevation` — **working**. Public OpenTopoData instance, no key, ~1 req/sec rate limit — fine for occasional per-estate lookups, would need a paid/self-hosted instance for high call volume.
 - [x] `fire_alerts` — **working**, tested 2026-08-26 with a real `FIRMS_MAP_KEY` against both the lib function and the actual MCP `tools/call` protocol. Verified CSV parsing against a real high-activity bbox (Amazon) — Cocabo/Xoco returned empty results (no fires detected), which is a legitimate result, not a failure.
 - [x] `sentinel_sar` — **working**, tested 2026-08-26. Found and fixed two real bugs: (1) the same `/2000` resx/resy divisor used for NDVI made SAR's GAMMA0_TERRAIN orthorectification take ~47s per call and produced degenerate stats (Sentinel Hub returning the **JSON string** `"Infinity"` for mean/max on some pixels, not a numeric error) — fixed by using a coarser `/1000` divisor (9s/5s per call) and by sanitizing any non-finite value to `null` regardless of resolution, since this Sentinel Hub quirk isn't fully avoidable just by tuning resolution.
-- [ ] `global_forest_watch` — **untested**, no `GFW_API_KEY` obtained yet. The request shape (`POST` with `{sql, geometry}` body, `x-api-key` header) is confirmed correct up to the auth check — GFW's API returns its generic "missing API key" message for this exact shape rather than a body-validation error. Field names follow GFW's documented `dataset__field` convention but the actual response shape is not independently confirmed. Get a free key (globalforestwatch.org → My GFW → Developer) and re-test before relying on it.
+- [ ] `global_forest_watch` — **untested**, no `GFW_API_KEY` obtained yet. The request shape (`POST` with `{sql, geometry}` body, `x-api-key` header) is confirmed correct up to the auth check — GFW's API returns its generic "missing API key" message for this exact shape rather than a body-validation error, and both the header name and API host are independently confirmed against GFW's own docs (2026-08-26, globalnaturewatch.org/help/developers/guides/create-and-use-an-api-key). Field names follow GFW's documented `dataset__field` convention but the actual response shape is not independently confirmed. Getting a key is **not** a one-click signup — confirmed 4-step flow:
+      1. Create a MyGFW account with email+password (not a Google/Twitter/Facebook login — GFW Data API doesn't support social-login accounts) at globalforestwatch.org's login page, or via `POST /auth/sign-up` with `{name, email}`. Either way you then get an email from Okta to set a password.
+      2. Get a bearer auth token: `POST /auth/token` (form-encoded `username`=email, `password`) → `access_token` in the response.
+      3. Create the actual API key: `POST /auth/apikey` with `Authorization: Bearer <token>` and body `{alias, email, organization, domains}` (`domains: []` works but has tighter usage limits than a registered domain).
+      4. Use the returned key in the `x-api-key` header on data requests.
+      Re-test once a key exists.
 
 ## Phase 1 vs phase 2
 
