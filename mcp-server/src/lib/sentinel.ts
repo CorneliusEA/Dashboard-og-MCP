@@ -10,7 +10,7 @@ export const BBOXES = {
 
 let cachedToken: { token: string; expires: number } | null = null
 
-async function getToken(): Promise<string> {
+export async function getToken(): Promise<string> {
   if (cachedToken && Date.now() < cachedToken.expires) return cachedToken.token
 
   const res = await fetch(

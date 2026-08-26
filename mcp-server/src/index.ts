@@ -15,6 +15,7 @@ import express from 'express'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { registerSentinelTool } from './tools/sentinel.js'
+import { registerSentinel1Tool } from './tools/sentinel1.js'
 import { registerForslerTool } from './tools/forsler.js'
 import { registerSoilSenseTool } from './tools/soilsense.js'
 import { registerXNaturaTool } from './tools/xnatura.js'
@@ -24,6 +25,7 @@ import { registerSoilGridsTool } from './tools/soilgrids.js'
 import { registerGbifTool } from './tools/gbif.js'
 import { registerElevationTool } from './tools/elevation.js'
 import { registerFirmsTool } from './tools/firms.js'
+import { registerGfwTool } from './tools/gfw.js'
 
 function buildServer(): McpServer {
   const server = new McpServer({
@@ -32,6 +34,7 @@ function buildServer(): McpServer {
   })
 
   registerSentinelTool(server)
+  registerSentinel1Tool(server)
   registerForslerTool(server)
   registerSoilSenseTool(server)
   registerXNaturaTool(server)
@@ -41,6 +44,7 @@ function buildServer(): McpServer {
   registerGbifTool(server)
   registerElevationTool(server)
   registerFirmsTool(server)
+  registerGfwTool(server)
 
   return server
 }

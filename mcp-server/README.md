@@ -25,7 +25,16 @@ Free-data enrichment tools (added 2026-08-26, no cost, no dedicated backend):
 | `soilgrids` | ISRIC SoilGrids | No API key. Modeled global soil properties (250m), covers ground SoilSense sensors don't reach |
 | `gbif_biodiversity` | GBIF | No API key. Global open occurrence records, complements 3Bee/XNatura |
 | `elevation` | OpenTopoData (SRTM30m) | No API key. Public instance, ~1 req/sec rate limit |
-| `fire_alerts` | NASA FIRMS | **Requires `FIRMS_MAP_KEY`** (free instant signup at firms.modaps.eosdis.nasa.gov/api/area) — untested against a real key so far |
+| `fire_alerts` | NASA FIRMS | **Requires `FIRMS_MAP_KEY`** (free instant signup at firms.modaps.eosdis.nasa.gov/api/area) — tested working 2026-08-26 |
+| `sentinel_sar` | Sentinel Hub (Sentinel-1) | Same creds as `sentinel_ndvi`. Cloud cover-independent, sensitive to soil/canopy moisture |
+| `global_forest_watch` | GFW Data API | **Requires `GFW_API_KEY`** (free self-serve signup at globalforestwatch.org → My GFW → Developer) — untested against a real key so far |
+
+Investigated and **not** added, with reasons:
+
+- **Copernicus DEM** — not available on the free public OpenTopoData instance; `elevation` (SRTM30m) already covers this need.
+- **Copernicus Land Monitoring Service (CORINE Land Cover)** — EU-only coverage, doesn't include Panama/Nicaragua where the estates are.
+- **ESA WorldCover via Sentinel Hub** — tried querying it as a Sentinel Hub collection type, got a clear "invalid collection type" rejection. Might be reachable a different way (openEO, direct COG access) but not confirmed — would need more research before spending more Sentinel Hub API calls guessing at it.
+- **JRC Global Surface Water** — no simple point/bbox REST API; querying arbitrary polygons requires Google Earth Engine (a service account + enabling the Earth Engine API on a GCP project). That's an infrastructure decision, not just a code change — flagging for a decision rather than building silently.
 
 ## Architecture rule
 
@@ -131,7 +140,9 @@ Tested 2026-08-26 (free enrichment tools), all against real live requests throug
 - [x] `soilgrids` — **working**. Per-property `d_factor` unscaling verified against the raw API response (varies per property, e.g. 10 for pH/clay, 100 for nitrogen — do not hardcode one factor).
 - [x] `gbif_biodiversity` — **working**. `species_summary` does a facet query then N follow-up species-name lookups (one per top result) to resolve numeric species keys to real names — adds latency but numeric-only output isn't useful on its own.
 - [x] `elevation` — **working**. Public OpenTopoData instance, no key, ~1 req/sec rate limit — fine for occasional per-estate lookups, would need a paid/self-hosted instance for high call volume.
-- [ ] `fire_alerts` — **untested**, no `FIRMS_MAP_KEY` obtained yet. Code follows the documented FIRMS Area API CSV format; fails cleanly with a clear "not configured" message when the key is missing. Get a free key and re-test before relying on it.
+- [x] `fire_alerts` — **working**, tested 2026-08-26 with a real `FIRMS_MAP_KEY` against both the lib function and the actual MCP `tools/call` protocol. Verified CSV parsing against a real high-activity bbox (Amazon) — Cocabo/Xoco returned empty results (no fires detected), which is a legitimate result, not a failure.
+- [x] `sentinel_sar` — **working**, tested 2026-08-26. Found and fixed two real bugs: (1) the same `/2000` resx/resy divisor used for NDVI made SAR's GAMMA0_TERRAIN orthorectification take ~47s per call and produced degenerate stats (Sentinel Hub returning the **JSON string** `"Infinity"` for mean/max on some pixels, not a numeric error) — fixed by using a coarser `/1000` divisor (9s/5s per call) and by sanitizing any non-finite value to `null` regardless of resolution, since this Sentinel Hub quirk isn't fully avoidable just by tuning resolution.
+- [ ] `global_forest_watch` — **untested**, no `GFW_API_KEY` obtained yet. The request shape (`POST` with `{sql, geometry}` body, `x-api-key` header) is confirmed correct up to the auth check — GFW's API returns its generic "missing API key" message for this exact shape rather than a body-validation error. Field names follow GFW's documented `dataset__field` convention but the actual response shape is not independently confirmed. Get a free key (globalforestwatch.org → My GFW → Developer) and re-test before relying on it.
 
 ## Phase 1 vs phase 2
 
