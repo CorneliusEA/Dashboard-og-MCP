@@ -194,4 +194,4 @@ scratch against those docs and confirmed it live — see Status/TODO above.
 
 ---
 
-_Trigger test: 2026-09-02, confirming mcp-server-deploy auto-fires on push after Console reconnect._
+_Trigger test: 2026-09-02, confirming mcp-server-deploy auto-fires on push (recreated via Console UI after gcloud CLI repeatedly failed)._
