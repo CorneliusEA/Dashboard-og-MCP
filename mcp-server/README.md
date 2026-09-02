@@ -13,7 +13,7 @@ Original five (phase 1 scope):
 |---|---|---|
 | `sentinel_ndvi` | Sentinel Hub | Direct call, same creds as Dashboard |
 | `forsler_maps` | Forsler | Direct call, same creds as Dashboard |
-| `soilsense_data` | SoilSense | Direct call. **No hardcoded credential fallback** — set `SOILSENSE_EMAIL`/`SOILSENSE_PASSWORD` or calls fail |
+| `soilsense_data` | SoilSense | Requires `SOILSENSE_API_KEY` (from account settings). Rewritten 2026-09-02 against the real production API — the original staging host + email/password flow was deprecated, see Status/TODO |
 | `xnatura_biodiversity` | 3Bee / XNatura | Direct call, site 101561 |
 | `earthsurveillance_rag_chat` | EarthSurveillance Gemini RAG | Via public `api.earthsurveillance.ai` only — placeholder endpoint, confirm real path before use |
 
@@ -71,10 +71,7 @@ values from the Dashboard/EarthSurveillance repos — do not regenerate):
 - `FORSLER_API_KEY`, `FORSLER_ORGANIZATION_ID`, `FORSLER_BASE_URL`
 - `XNATURA_API_KEY`, `XNATURA_SITE_ID`, `XNATURA_USER_SLUG`, `XNATURA_BASE_URL`
 - `EARTHSURVEILLANCE_API_BASE_URL`, `EARTHSURVEILLANCE_EMAIL`, `EARTHSURVEILLANCE_PASSWORD`
-
-`SOILSENSE_BASE_URL`/`EMAIL`/`PASSWORD` are **not required for phase 1** —
-see Status/TODO below. The server starts and serves the other tools fine
-with these unset; `soilsense_data` just fails when called until phase 2.
+- `SOILSENSE_API_KEY` (and optionally `SOILSENSE_BASE_URL`, defaults to `api.app.soilsense.io`) — see Status/TODO below for the 2026-09-02 rewrite against the real production API.
 
 `FIRMS_MAP_KEY` is optional — only `fire_alerts` needs it, everything else
 works without it. Get one free at firms.modaps.eosdis.nasa.gov/api/area.
@@ -100,13 +97,34 @@ Tested 2026-08-24 against real credentials:
       this. A future improvement could widen the window or relax cloud
       coverage per-estate, or expose both as tool arguments.
 - [x] `forsler_maps` — **working**, no changes needed.
-- [ ] `soilsense_data` — **deferred to phase 2**. `api.staging.soilsense.io`
-      times out at the connection level from this environment (DNS resolves
-      fine). Other hosts work, so this looks like the staging server itself
-      being down or IP-restricted, not a code issue. Not a blocker for
-      phase 1 launch: the tool is registered but simply fails when called
-      until `SOILSENSE_EMAIL`/`PASSWORD` are set and the staging host is
-      confirmed reachable — re-test then.
+- [x] `soilsense_data` — **working**, rewritten and tested 2026-09-02.
+      SoilSense confirmed `api.staging.soilsense.io` (the host the original
+      integration guide used) is deprecated and no longer available — the
+      earlier "connection times out" wasn't an IP-restriction issue, it was
+      dead infrastructure. The real production API is entirely different:
+      host `api.app.soilsense.io`, auth is a single `x-api-key` header (not
+      email/password + login), and the endpoints/response shape don't
+      resemble the old ones at all (`/api/farm`, `/api/farm/sites`,
+      `/api/site/{id}/observations/latest`, `/api/site/{id}/observations`,
+      `/api/site/{id}/precipitation`). Rewrote `lib/soilsense.ts` and
+      `tools/soilsense.ts` from scratch against SoilSense's current docs
+      (soilsense.io/blog/integrate-soil-moisture-data-api-webhooks) and
+      confirmed live against a real farm (Finca del Lago, Nicaragua — Xoco,
+      two sites, both configured with top+bottom depth cables).
+      **No pH or nutrient fields exist anywhere in the API** — confirmed
+      against a real response, not just the docs. If a stakeholder asks for
+      that data, it needs to be sourced elsewhere; SoilSense's sensors
+      don't appear to measure it.
+      **Date-range filtering on `/observations` is unverified** — `from`/
+      `to` query params didn't error, but returned identical results with
+      and without them in testing (21 readings, ~7h window either way).
+      Don't rely on it working until confirmed with a wider real test.
+      SoilSense also offers **webhooks** (HMAC-signed push, telemetry +
+      attributes) as an alternative to polling — worth considering for the
+      Dashboard's live-updating tiles specifically, since that's a better
+      fit for "update every 20 min" than an on-demand MCP tool call. Not
+      built — this is a separate Dashboard-frontend decision, not an MCP
+      connector change.
 - [x] `xnatura_biodiversity` — **working**. Real base URL/auth/paths found
       2026-08-24 via the platform's Settings → API keys page (X-Api-Key
       header) plus the live OpenAPI spec at platform.3bee.com/openapi.json
@@ -149,23 +167,27 @@ Tested 2026-08-26 (free enrichment tools), all against real live requests throug
 
 ## Phase 1 vs phase 2
 
-**Phase 1 (this launch):** sentinel, forsler, xnatura, earthsurveillance —
-all tested working. SoilSense ships registered-but-unconfigured; calling
-it fails cleanly until phase 2 sets its env vars and confirms the staging
-host is reachable.
-**Phase 1.5 (2026-08-26):** weather, soilgrids, gbif_biodiversity, elevation
-— all free, no key required, tested working. fire_alerts added but needs
-a `FIRMS_MAP_KEY` before it can be tested/used.
-**Phase 2:** SoilSense (blocked externally — see below), Xoco-estate bboxes,
-and Anders' longer source list (Global Forest Watch, ESA, CarbonTrace).
+**Phase 1 (initial launch):** sentinel, forsler, xnatura, earthsurveillance
+— all tested working.
+**Phase 1.5 (2026-08-26):** weather, soilgrids, gbif_biodiversity, elevation,
+sentinel_sar, fire_alerts, global_forest_watch — all tested working.
+**SoilSense (2026-09-02):** rewritten against the real production API and
+now working too — see Status/TODO above for what changed. No longer a
+phase-2 blocker.
+**Remaining phase 2:** Xoco-estate bboxes for sentinel/forsler beyond what
+already works, and Anders' longer source list (ESA, CarbonTrace).
 
-### SoilSense — external blocker, not a code issue
+### SoilSense — resolved, was dead infrastructure not a config issue
 
-As of 2026-08-25, tested with real credentials set on the live Cloud Run
-service (not just locally): the call now gets past auth-configuration and
-fails with a generic `fetch failed` at the network layer — same failure
-from Cloud Run's IP as from a developer laptop. This means it's not a
-credentials problem, it's `api.staging.soilsense.io` itself being down or
-IP-restricted. Needs someone to confirm with SoilSense whether the staging
-server is up, and if there's an IP allowlist, whether Cloud Run's egress
-IP needs to be added to it.
+The original integration (built 2026-08-24) targeted
+`api.staging.soilsense.io` with email/password login, following an
+integration guide that turned out to be outdated. Every symptom pointed
+to a network-level problem rather than credentials — confirmed unreachable
+from three independent points (a developer laptop, the live Cloud Run
+service, and this rewrite's own testing), always a clean connection
+timeout rather than an auth error. SoilSense support (Giuseppe, 2026-09-02)
+confirmed the staging host is simply no longer available, and pointed to
+their current docs (soilsense.io/blog/integrate-soil-moisture-data-api-webhooks),
+which describe a different host, a different auth method (API key, not
+login), and different endpoints entirely. Rewrote the integration from
+scratch against those docs and confirmed it live — see Status/TODO above.

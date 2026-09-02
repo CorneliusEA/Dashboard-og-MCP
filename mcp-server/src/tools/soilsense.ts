@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { getSensors, getLatestReadings, getSensorReadings } from '../lib/soilsense.js'
+import { getFarm, getSites, getLatestObservation, getObservationHistory, getPrecipitation } from '../lib/soilsense.js'
 
 export function registerSoilSenseTool(server: McpServer) {
   server.registerTool(
@@ -8,23 +8,23 @@ export function registerSoilSenseTool(server: McpServer) {
     {
       title: 'SoilSense soil sensors',
       description:
-        'Query SoilSense soil moisture/temperature sensors: list sensors, get latest readings across all sensors, or history for one sensor.',
+        'Query SoilSense soil moisture/temperature sensors. farm: farm details and site depth/calibration config. sites: list observation sites. latest: most recent reading for one site (top/mid/midBot/bot depths). history: recent readings for one site. precipitation: rain gauge data for one site. No pH or nutrient data is available — SoilSense does not measure it.',
       inputSchema: {
-        action: z.enum(['sensors', 'latest', 'history']).describe('sensors: list devices. latest: most recent reading per sensor. history: readings for one sensor over a date range'),
-        sensorId: z.string().optional().describe('Required for action=history'),
-        from: z.string().optional().describe('ISO date, for action=history'),
-        to: z.string().optional().describe('ISO date, for action=history'),
+        action: z.enum(['farm', 'sites', 'latest', 'history', 'precipitation']),
+        siteId: z.string().optional().describe('Required for action=latest, history, or precipitation'),
       },
     },
-    async ({ action, sensorId, from, to }) => {
+    async ({ action, siteId }) => {
       let result: unknown
-      if (action === 'sensors') {
-        result = await getSensors()
-      } else if (action === 'latest') {
-        result = await getLatestReadings()
+      if (action === 'farm') {
+        result = await getFarm()
+      } else if (action === 'sites') {
+        result = await getSites()
       } else {
-        if (!sensorId) throw new Error('sensorId is required for action=history')
-        result = await getSensorReadings(sensorId, from, to)
+        if (!siteId) throw new Error(`siteId is required for action=${action}`)
+        if (action === 'latest') result = await getLatestObservation(siteId)
+        else if (action === 'history') result = await getObservationHistory(siteId)
+        else result = await getPrecipitation(siteId)
       }
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
