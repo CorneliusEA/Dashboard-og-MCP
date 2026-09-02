@@ -191,3 +191,7 @@ their current docs (soilsense.io/blog/integrate-soil-moisture-data-api-webhooks)
 which describe a different host, a different auth method (API key, not
 login), and different endpoints entirely. Rewrote the integration from
 scratch against those docs and confirmed it live — see Status/TODO above.
+
+---
+
+_Trigger test: 2026-09-02, confirming mcp-server-deploy auto-fires on push after Console reconnect._
