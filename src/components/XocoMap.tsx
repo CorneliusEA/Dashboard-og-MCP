@@ -135,17 +135,22 @@ export function XocoMap({ data, landCoverUrl, landCoverBounds }: XocoMapProps) {
         layerRefs.current[key] = geo
       }
 
-      // Fit bounds if we have features
-      const allFeatures = Object.values(data.layers).flatMap(l => l.features)
-      if (allFeatures.length > 0) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const allLayers = Object.values(layerRefs.current) as any[]
-          const group = L.featureGroup(allLayers)
-          const bounds = group.getBounds()
-          if (bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] })
-        } catch { /* use default center */ }
-      }
+      // Fit bounds to the farm itself, not every feature on the account.
+      // Some orgs include far-away outgrower sites (e.g. a supplier farm
+      // 90km from the main site) in the same Forsler org — fitting bounds
+      // to ALL layers combined would zoom out to include those too,
+      // shrinking the actual farm (and the land-cover overlay) to an
+      // invisible speck. Prefer the boundary layer's own extent; fall back
+      // to lotes, then to everything, only if boundary/lotes are empty.
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const preferredLayers = [layerRefs.current.boundary, layerRefs.current.lotes].filter(Boolean) as any[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const fallbackLayers = Object.values(layerRefs.current) as any[]
+        const group = L.featureGroup(preferredLayers.length > 0 ? preferredLayers : fallbackLayers)
+        const bounds = group.getBounds()
+        if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] })
+      } catch { /* use default center */ }
     })
 
     return () => {
