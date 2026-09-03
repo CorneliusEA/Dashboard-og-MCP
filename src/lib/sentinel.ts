@@ -5,7 +5,7 @@ export const BBOXES = { cocabo: COCABO_BBOX, xoco: XOCO_BBOX }
 
 let cachedToken: { token: string; expires: number } | null = null
 
-async function getToken(): Promise<string> {
+export async function getToken(): Promise<string> {
   if (cachedToken && Date.now() < cachedToken.expires) return cachedToken.token
 
   const res = await fetch(
@@ -100,4 +100,58 @@ function evaluatePixel(s) {
     ndviMax: stats?.max ?? 0.91,
     date: interval?.interval?.from?.split('T')[0] ?? from,
   }
+}
+
+/**
+ * NDVI-based land-cover classification, rendered as a PNG raster via
+ * Sentinel Hub's Process API (not the Statistics API used above — this
+ * returns an actual image, not aggregate stats). Three classes by NDVI
+ * threshold: green = dense vegetation/forest, amber = sparse vegetation
+ * or bare soil, red = bare ground/built-up/water. Thresholds (0.4, 0.15)
+ * are standard rule-of-thumb NDVI cutoffs, not calibrated against ground
+ * truth for this specific site.
+ */
+export async function fetchLandCoverImage(bbox = XOCO_BBOX, maxDim = 1024): Promise<Buffer> {
+  const token = await getToken()
+
+  const [minLon, minLat, maxLon, maxLat] = bbox
+  const aspect = (maxLon - minLon) / (maxLat - minLat)
+  const width = aspect >= 1 ? maxDim : Math.round(maxDim * aspect)
+  const height = aspect >= 1 ? Math.round(maxDim / aspect) : maxDim
+
+  const to = new Date().toISOString().split('T')[0]
+  const from = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+
+  const body = {
+    input: {
+      bounds: { bbox, properties: { crs: 'http://www.opengis.net/def/crs/EPSG/0/4326' } },
+      data: [
+        {
+          type: 'sentinel-2-l2a',
+          dataFilter: { timeRange: { from: `${from}T00:00:00Z`, to: `${to}T23:59:59Z` }, maxCloudCoverage: 30 },
+        },
+      ],
+    },
+    output: { width, height, responses: [{ identifier: 'default', format: { type: 'image/png' } }] },
+    evalscript: `//VERSION=3
+function setup() {
+  return { input: ["B04","B08","dataMask"], output: { bands: 4, sampleType: "AUTO" } };
+}
+function evaluatePixel(s) {
+  if (s.dataMask === 0) return [0, 0, 0, 0];
+  const ndvi = (s.B08 - s.B04) / (s.B08 + s.B04);
+  if (ndvi > 0.4) return [0.13, 0.80, 0.36, 0.65];
+  if (ndvi > 0.15) return [1.0, 0.71, 0.0, 0.65];
+  return [0.90, 0.22, 0.22, 0.65];
+}`,
+  }
+
+  const res = await fetch('https://services.sentinel-hub.com/api/v1/process', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'image/png' },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) throw new Error(`Sentinel land-cover render failed: ${res.status} — ${await res.text()}`)
+  return Buffer.from(await res.arrayBuffer())
 }

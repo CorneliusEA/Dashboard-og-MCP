@@ -27,7 +27,15 @@ const TILE_LAYERS = {
   },
 }
 
-export function XocoMap({ data }: { data: MapData }) {
+interface XocoMapProps {
+  data: MapData
+  /** URL serving the classified land-cover PNG (e.g. /api/xoco/landcover) */
+  landCoverUrl?: string
+  /** [minLon, minLat, maxLon, maxLat] the land-cover image was rendered for */
+  landCoverBounds?: [number, number, number, number]
+}
+
+export function XocoMap({ data, landCoverUrl, landCoverBounds }: XocoMapProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const leafletMap = useRef<any>(null)
@@ -35,12 +43,15 @@ export function XocoMap({ data }: { data: MapData }) {
   const layerRefs = useRef<Record<string, any>>({})
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tileRef = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const landCoverRef = useRef<any>(null)
 
   const [basemap, setBasemap] = useState<'satellite' | 'street'>('satellite')
   const [visible, setVisible] = useState<Record<string, boolean>>({
     boundary: true,
     lotes: true,
     points: true,
+    landcover: false,
   })
 
   // Init map once
@@ -71,6 +82,15 @@ export function XocoMap({ data }: { data: MapData }) {
       }).addTo(map)
 
       leafletMap.current = map
+
+      // Land-cover raster overlay (NDVI-classified, from /api/xoco/landcover)
+      if (landCoverUrl && landCoverBounds) {
+        const [minLon, minLat, maxLon, maxLat] = landCoverBounds
+        const bounds = L.latLngBounds([minLat, minLon], [maxLat, maxLon])
+        const overlay = L.imageOverlay(landCoverUrl, bounds, { opacity: 1 })
+        landCoverRef.current = overlay
+        if (visible.landcover) overlay.addTo(map)
+      }
 
       // Add GeoJSON layers
       const COLORS: Record<string, string> = {
@@ -150,6 +170,13 @@ export function XocoMap({ data }: { data: MapData }) {
         leafletMap.current.removeLayer(layer)
       }
     }
+    if (landCoverRef.current) {
+      if (visible.landcover) {
+        leafletMap.current.addLayer(landCoverRef.current)
+      } else {
+        leafletMap.current.removeLayer(landCoverRef.current)
+      }
+    }
   }, [visible])
 
   const COLORS: Record<string, string> = { boundary: '#A78BFA', lotes: '#9DFF51', points: '#FFB402' }
@@ -204,6 +231,37 @@ export function XocoMap({ data }: { data: MapData }) {
             </span>
           </label>
         ))}
+
+        {landCoverUrl && landCoverBounds && (
+          <>
+            <div style={{ height: 1, background: 'var(--bd2)' }} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={visible.landcover ?? false}
+                onChange={e => setVisible(v => ({ ...v, landcover: e.target.checked }))}
+                style={{ display: 'none' }}
+              />
+              <span style={{
+                width: 10, height: 10, borderRadius: 2,
+                background: visible.landcover ? 'linear-gradient(90deg,#E63A3A,#FFB402,#22CC5C)' : 'transparent',
+                border: '1.5px solid var(--muted)',
+                display: 'inline-block', flexShrink: 0,
+              }} />
+              <span style={{ fontSize: 10, color: visible.landcover ? '#fff' : 'var(--muted)', fontFamily: 'var(--mono)' }}>
+                Land cover
+              </span>
+            </label>
+            {visible.landcover && (
+              <div style={{ fontSize: 8.5, fontFamily: 'var(--mono)', color: 'var(--muted)', lineHeight: 1.7, paddingLeft: 17 }}>
+                <div><span style={{ color: '#22CC5C' }}>■</span> Forest / dense vegetation</div>
+                <div><span style={{ color: '#FFB402' }}>■</span> Sparse vegetation / soil</div>
+                <div><span style={{ color: '#E63A3A' }}>■</span> Bare ground / built-up</div>
+                <div style={{ marginTop: 3, color: 'var(--muted)', opacity: 0.7 }}>NDVI-derived · Sentinel-2 · 30d</div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   )

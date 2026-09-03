@@ -20,24 +20,6 @@ interface ClientCard {
 
 const CLIENTS: ClientCard[] = [
   {
-    name: 'COCABO',
-    subtitle: 'Natural Capital Monitor',
-    location: 'Bocas del Toro, Panama',
-    flag: '🇵🇦',
-    href: '/cocabo',
-    status: 'PHASE 1 · ACTIVE',
-    statusColor: 'var(--green)',
-    accentColor: '#2ECC71',
-    metrics: [
-      { label: 'Farmers', value: '1,438' },
-      { label: 'Area', value: '4,394 ha' },
-      { label: 'Carbon reserve', value: '1.88M tCO₂e', color: 'var(--green)' },
-      { label: 'EUDR status', value: 'Phase 1', color: '#D97706' },
-    ],
-    tags: ['EUDR', 'Carbon', 'E-Ledger', 'Biodiversity', 'Finance'],
-    phase: 'Phase 1 — Discovery + EUDR Baseline',
-  },
-  {
     name: 'XOCO GOURMET',
     subtitle: 'Management Dashboard',
     location: 'El Lago, Nicaragua',
@@ -54,6 +36,24 @@ const CLIENTS: ClientCard[] = [
     ],
     tags: ['Forsler', 'XNatura', 'SoilSense', 'EUDR', 'Carbon'],
     phase: 'Pilot — XNatura · SoilSense · Forsler',
+  },
+  {
+    name: 'COCABO',
+    subtitle: 'Natural Capital Monitor',
+    location: 'Bocas del Toro, Panama',
+    flag: '🇵🇦',
+    href: '/cocabo',
+    status: 'PHASE 1 · ACTIVE',
+    statusColor: 'var(--green)',
+    accentColor: '#2ECC71',
+    metrics: [
+      { label: 'Farmers', value: '1,438' },
+      { label: 'Area', value: '4,394 ha' },
+      { label: 'Carbon reserve', value: '1.88M tCO₂e', color: 'var(--green)' },
+      { label: 'EUDR status', value: 'Phase 1', color: '#D97706' },
+    ],
+    tags: ['EUDR', 'Carbon', 'E-Ledger', 'Biodiversity', 'Finance'],
+    phase: 'Phase 1 — Discovery + EUDR Baseline',
   },
 ]
 

@@ -48,7 +48,11 @@ export function XocoSiteLayers() {
 
       {/* Interactive map */}
       {mapData ? (
-        <XocoMap data={mapData} />
+        <XocoMap
+          data={mapData}
+          landCoverUrl="/api/xoco/landcover"
+          landCoverBounds={[-86.38, 12.27, -86.33, 12.32]}
+        />
       ) : (
         <div style={{ height: 480, background: 'var(--dark2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--bd)', marginBottom: 16 }}>
           <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--muted)' }}>Loading map data from Forsler…</span>
