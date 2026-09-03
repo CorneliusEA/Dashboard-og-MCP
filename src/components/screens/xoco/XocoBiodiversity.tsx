@@ -79,15 +79,15 @@ export function XocoBiodiversity() {
 
   return (
     <div>
-      <div className="section-label">XNatura · 3Bee · Nature Monitor</div>
+      <div className="section-label">Gaian-Natura · Nature Monitor</div>
       <div className="section-title">Biodiversity — El Lago, Nicaragua</div>
-      <div className="section-sub">Live sensor data from XNatura (3Bee Oasi platform) · site {SITE_ID}</div>
+      <div className="section-sub">Live sensor data from Gaian-Natura · site {SITE_ID}</div>
 
       {/* Status badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--mono)', fontSize: 9, padding: '3px 9px', borderRadius: 4, border: '0.5px solid rgba(157,255,81,.3)', background: 'var(--dark2)', color: '#9DFF51' }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: data?.source === 'live' ? '#9DFF51' : '#FFB402', display: 'inline-block', animation: 'pulse 2s infinite' }} />
-          XNATURA · {isLoading ? 'LOADING' : data?.source === 'live' ? 'LIVE DATA' : data?.source === 'error' ? 'API ERROR' : 'NOT CONFIGURED'}
+          GAIAN-NATURA · {isLoading ? 'LOADING' : data?.source === 'live' ? 'LIVE DATA' : data?.source === 'error' ? 'API ERROR' : 'NOT CONFIGURED'}
         </div>
       </div>
 
@@ -104,7 +104,7 @@ export function XocoBiodiversity() {
 
       {/* Indicator species + native/alien breakdown */}
       <div className="grid-65">
-        <Card title="Indicator species — watch list" sub="Manually curated example list, not sourced from the XNatura API">
+        <Card title="Indicator species — watch list" sub="Manually curated example list, not sourced from the Gaian-Natura API">
           {INDICATOR_SPECIES.map((item, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: i < INDICATOR_SPECIES.length - 1 ? '1px solid var(--bd2)' : 'none' }}>
               <div style={{ width: 7, height: 7, borderRadius: '50%', background: item.variant === 'g' ? 'var(--green)' : item.variant === 'a' ? '#FFB402' : 'var(--red)', flexShrink: 0 }} />
@@ -117,7 +117,7 @@ export function XocoBiodiversity() {
           ))}
         </Card>
 
-        <Card title="Native / alien / endemic split" sub="XNatura observation classification">
+        <Card title="Native / alien / endemic split" sub="Gaian-Natura observation classification">
           {data?.source === 'live' && native && alien && endemic ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
@@ -131,12 +131,12 @@ export function XocoBiodiversity() {
                 </div>
               ))}
               <div style={{ fontSize: 10, color: 'var(--muted)', lineHeight: 1.5, marginTop: 4 }}>
-                Media (camera-trap images/sounds) endpoint returns no items for this site yet — nothing to display until XNatura has media logged.
+                Media (camera-trap images/sounds) endpoint returns no items for this site yet — nothing to display until Gaian-Natura has media logged.
               </div>
             </div>
           ) : (
             <div style={{ fontSize: 10, color: 'var(--muted)', lineHeight: 1.5 }}>
-              {data?.source === 'pending' ? 'XNatura API key not configured.' : data?.source === 'error' ? `API error: ${data?.error ?? 'unknown'}` : 'Loading…'}
+              {data?.source === 'pending' ? 'Gaian-Natura API key not configured.' : data?.source === 'error' ? `API error: ${data?.error ?? 'unknown'}` : 'Loading…'}
             </div>
           )}
         </Card>

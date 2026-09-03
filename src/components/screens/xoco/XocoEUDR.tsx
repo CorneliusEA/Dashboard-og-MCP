@@ -22,7 +22,7 @@ export function XocoEUDR() {
     <div>
       <div className="section-label">Earth Surveillance · EUDR Compliance</div>
       <div className="section-title">EUDR Compliance — Deforestation-Free Cacao</div>
-      <div className="section-sub">Per-shipment digital passports anchored to the E-Ledger · GPS polygon evidence from the Forsler full-site layer · El Lago, Nicaragua</div>
+      <div className="section-sub">Per-shipment digital passports anchored to the E-Ledger · GPS polygon evidence from the Gaian-Earth Mapping full-site layer · El Lago, Nicaragua</div>
 
       <div style={{ background: 'rgba(46,204,113,.05)', border: '1px solid rgba(46,204,113,.2)', borderRadius: 9, padding: '13px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{ fontSize: 22 }}>📋</div>
@@ -40,7 +40,7 @@ export function XocoEUDR() {
         {[
           { label: 'Passports issued', value: '47', sub: 'all shipments to date', color: 'var(--green)' },
           { label: 'Passport validity', value: '100%', sub: '0 rejected at EU entry', color: 'var(--green)' },
-          { label: 'GPS polygons', value: `${polygons} features`, sub: 'Forsler · all lotes geo-registered', color: 'var(--green)' },
+          { label: 'GPS polygons', value: `${polygons} features`, sub: 'Gaian-Earth Mapping · all lotes geo-registered', color: 'var(--green)' },
           { label: 'Deforestation', value: 'Clear', sub: 'free pre-Dec 2020 cutoff', color: 'var(--green)' },
         ].map((m, i) => (
           <div key={i} className="metric g">
@@ -52,7 +52,7 @@ export function XocoEUDR() {
       </div>
 
       <div className="grid-65">
-        <Card title="Shipment passport ledger" sub="E-Ledger anchored · Forsler GPS">
+        <Card title="Shipment passport ledger" sub="E-Ledger anchored · Gaian-Earth Mapping GPS">
           <table className="data-table">
             <thead><tr><th>Shipment</th><th>Volume</th><th>Destination</th><th>Polygon</th><th>Block</th><th>Status</th></tr></thead>
             <tbody>
@@ -72,7 +72,7 @@ export function XocoEUDR() {
 
         <Card title="How a passport is built">
           {[
-            { color: '#A78BFA', step: '1 · GPS polygon', meta: `Forsler full-site layer · ${polygons} features registered` },
+            { color: '#A78BFA', step: '1 · GPS polygon', meta: `Gaian-Earth Mapping full-site layer · ${polygons} features registered` },
             { color: 'var(--green)', step: '2 · Deforestation check', meta: 'Sentinel-2 history confirms no forest loss after Dec 2020 cutoff.' },
             { color: 'var(--green)', step: '3 · Shipment binding', meta: 'Volume and lot linked to the verified polygon at dispatch.' },
             { color: '#60A5FA', step: '4 · E-Ledger anchor', meta: 'Passport hash committed on-chain — tamper-evident record.' },

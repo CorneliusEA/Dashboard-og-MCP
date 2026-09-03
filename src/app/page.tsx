@@ -34,8 +34,8 @@ const CLIENTS: ClientCard[] = [
       { label: 'Passports issued', value: '47', color: '#9DFF51' },
       { label: 'EUDR readiness', value: 'Live', color: '#9DFF51' },
     ],
-    tags: ['Forsler', 'XNatura', 'SoilSense', 'EUDR', 'Carbon'],
-    phase: 'Pilot — XNatura · SoilSense · Forsler',
+    tags: ['Gaian-Earth Mapping', 'Gaian-Natura', 'Gaian-Soilsensor', 'EUDR', 'Carbon'],
+    phase: 'Pilot — Gaian-Natura · Gaian-Soilsensor · Gaian-Earth Mapping',
   },
   {
     name: 'COCABO',
@@ -195,7 +195,7 @@ export default function Portal() {
         {/* Footer note */}
         <div style={{ borderTop: '1px solid var(--bd2)', paddingTop: 20, paddingBottom: 32, display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)' }}>
           <span>EARTH SURVEILLANCE · Natural Capital Intelligence Platform</span>
-          <span>Carbon data live from Sentinel-2 · GPS data live from Forsler</span>
+          <span>Carbon data live from Sentinel-2 · GPS data live from Gaian-Earth Mapping</span>
         </div>
       </div>
     </div>

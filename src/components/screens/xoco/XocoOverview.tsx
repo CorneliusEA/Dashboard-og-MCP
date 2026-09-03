@@ -20,7 +20,7 @@ export function XocoOverview() {
     <div>
       <div className="section-label">Earth Surveillance · Xoco Gourmet ApS · 2026</div>
       <div className="section-title">Management Dashboard — El Lago Agroforestry Pilot</div>
-      <div className="section-sub">Single-origin cacao &amp; agroforestry · Tuma–La Dalia corridor, Nicaragua · XNatura · SoilSense · Forsler</div>
+      <div className="section-sub">Single-origin cacao &amp; agroforestry · Tuma–La Dalia corridor, Nicaragua · Gaian-Natura · Gaian-Soilsensor · Gaian-Earth Mapping</div>
 
       <div style={{ background: 'linear-gradient(135deg,rgba(255,180,2,.07),rgba(248,70,11,.05))', border: '1px solid rgba(255,180,2,.25)', borderRadius: 9, padding: '13px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{ fontSize: 22 }}>⏳</div>
@@ -36,11 +36,11 @@ export function XocoOverview() {
 
       <div className="grid-4" style={{ gridTemplateColumns: 'repeat(5,1fr)' }}>
         {[
-          { label: 'Biodiversity index', src: 'XNATURA', srcColor: '#22D3EE', value: `${bioIdx}/100`, sub: 'composite E-Asset score', delta: '↑ recovering vs baseline', color: 'var(--green)' },
-          { label: 'Bird species', src: 'XNATURA', srcColor: '#22D3EE', value: '234', sub: 'documented · acoustic + visual', delta: '↑ indicator spp. present', color: 'var(--green)' },
-          { label: 'Plant-available water', src: 'SOILSENSE', srcColor: '#FFB402', value: `${paw}%`, sub: 'field mean · all sensors', delta: '→ moderate draw-down', color: '#FFB402' },
-          { label: 'Carbon stock', src: 'FORSLER', srcColor: '#A78BFA', value: `${(co2 / 1000).toFixed(1)}k tCO₂e`, sub: 'Sentinel-2 · Somarriba 2013', delta: '↑ 311 tCO₂e/ha', color: 'var(--green)' },
-          { label: 'Forsler features', src: 'FORSLER', srcColor: '#A78BFA', value: String(trees), sub: 'plots, lotes & key points', delta: '↑ live from Forsler', color: 'var(--green)' },
+          { label: 'Biodiversity index', src: 'GAIAN-NATURA', srcColor: '#22D3EE', value: `${bioIdx}/100`, sub: 'composite E-Asset score', delta: '↑ recovering vs baseline', color: 'var(--green)' },
+          { label: 'Bird species', src: 'GAIAN-NATURA', srcColor: '#22D3EE', value: '234', sub: 'documented · acoustic + visual', delta: '↑ indicator spp. present', color: 'var(--green)' },
+          { label: 'Plant-available water', src: 'GAIAN-SOILSENSOR', srcColor: '#FFB402', value: `${paw}%`, sub: 'field mean · all sensors', delta: '→ moderate draw-down', color: '#FFB402' },
+          { label: 'Carbon stock', src: 'GAIAN-EARTH MAPPING', srcColor: '#A78BFA', value: `${(co2 / 1000).toFixed(1)}k tCO₂e`, sub: 'Sentinel-2 · Somarriba 2013', delta: '↑ 311 tCO₂e/ha', color: 'var(--green)' },
+          { label: 'Gaian-Earth Mapping features', src: 'GAIAN-EARTH MAPPING', srcColor: '#A78BFA', value: String(trees), sub: 'plots, lotes & key points', delta: '↑ live from Gaian-Earth Mapping', color: 'var(--green)' },
         ].map((m, i) => (
           <div key={i} className="metric" style={{ borderLeft: `2px solid ${m.srcColor}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, fontFamily: 'var(--mono)', color: 'var(--muted)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 4 }}>
@@ -54,7 +54,7 @@ export function XocoOverview() {
       </div>
 
       <div className="grid-65">
-        <Card title="Carbon stock — 16-year trajectory" sub="Forsler inventory · 2010 cattle baseline → 2026 established agroforestry">
+        <Card title="Carbon stock — 16-year trajectory" sub="Gaian-Earth Mapping inventory · 2010 cattle baseline → 2026 established agroforestry">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {[2010,2012,2014,2016,2018,2020,2022,2024,2026].map((yr, i) => {
               const vals = [6,11,19,31,45,58,71,82,co2/1000]
@@ -70,16 +70,16 @@ export function XocoOverview() {
               )
             })}
           </div>
-          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 10 }}>Standing CO₂ stock derived by Forsler from biomass inventory.</div>
+          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 10 }}>Standing CO₂ stock derived by Gaian-Earth Mapping from biomass inventory.</div>
         </Card>
 
         <div>
           <Card title="Cross-source status">
             {[
-              { k: 'XNatura — biodiversity', v: `${bioIdx}/100 · OK`, cls: 'g' },
-              { k: 'SoilSense — soil network', v: '11/12 sensors', cls: 'a' },
-              { k: 'Forsler — inventory', v: '62% sufficiency', cls: 'a' },
-              { k: 'Forsler — risk mgmt', v: '2 watch items', cls: 'a' },
+              { k: 'Gaian-Natura — biodiversity', v: `${bioIdx}/100 · OK`, cls: 'g' },
+              { k: 'Gaian-Soilsensor — soil network', v: '11/12 sensors', cls: 'a' },
+              { k: 'Gaian-Earth Mapping — inventory', v: '62% sufficiency', cls: 'a' },
+              { k: 'Gaian-Earth Mapping — risk mgmt', v: '2 watch items', cls: 'a' },
               { k: 'EUDR readiness', v: 'Live · passports issuing', cls: 'g' },
               { k: 'Carbon data sufficiency', v: '62% · VM0047 target 80%', cls: 'a' },
             ].map((row, i) => (
@@ -95,9 +95,9 @@ export function XocoOverview() {
 
           <Card title="Recent cross-source activity" sub="Live feed">
             {[
-              { color: '#22D3EE', title: 'XNatura — new bird detection batch', meta: 'Acoustic survey added 3 species to El Lago inventory.', time: '22m' },
-              { color: '#FFB402', title: 'SoilSense — sensor SS-07 reporting gap', meta: 'No telemetry 6h on lote 13 — flagged for field check.', time: '6h' },
-              { color: '#A78BFA', title: 'Forsler — biomass recalculation committed', meta: `Carbon stock live via Sentinel-2 · ${carbon?.source ?? 'Somarriba 2013'}`, time: '1d' },
+              { color: '#22D3EE', title: 'Gaian-Natura — new bird detection batch', meta: 'Acoustic survey added 3 species to El Lago inventory.', time: '22m' },
+              { color: '#FFB402', title: 'Gaian-Soilsensor — sensor SS-07 reporting gap', meta: 'No telemetry 6h on lote 13 — flagged for field check.', time: '6h' },
+              { color: '#A78BFA', title: 'Gaian-Earth Mapping — biomass recalculation committed', meta: `Carbon stock live via Sentinel-2 · ${carbon?.source ?? 'Somarriba 2013'}`, time: '1d' },
             ].map((item, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 0', borderBottom: i < 2 ? '1px solid var(--bd2)' : 'none' }}>
                 <div style={{ width: 7, height: 7, borderRadius: '50%', background: item.color, flexShrink: 0, marginTop: 4 }} />

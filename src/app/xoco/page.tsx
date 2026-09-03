@@ -5,6 +5,7 @@ import { XocoSidebar, type XocoTab } from '@/components/XocoSidebar'
 import { XocoOverview } from '@/components/screens/xoco/XocoOverview'
 import { XocoBiodiversity } from '@/components/screens/xoco/XocoBiodiversity'
 import { XocoSoil } from '@/components/screens/xoco/XocoSoil'
+import { XocoWeather } from '@/components/screens/xoco/XocoWeather'
 import { XocoInventory } from '@/components/screens/xoco/XocoInventory'
 import { XocoSiteLayers } from '@/components/screens/xoco/XocoSiteLayers'
 import { XocoManagement } from '@/components/screens/xoco/XocoManagement'
@@ -14,6 +15,7 @@ const SCREENS: Record<XocoTab, React.ReactNode> = {
   overview: <XocoOverview />,
   biodiversity: <XocoBiodiversity />,
   soil: <XocoSoil />,
+  weather: <XocoWeather />,
   inventory: <XocoInventory />,
   layers: <XocoSiteLayers />,
   management: <XocoManagement />,

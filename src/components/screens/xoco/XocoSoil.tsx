@@ -29,16 +29,16 @@ export function XocoSoil() {
 
   return (
     <div>
-      <div className="section-label">SoilSense API · Sensor Network</div>
+      <div className="section-label">Gaian-Soilsensor API · Sensor Network</div>
       <div className="section-title">Soil — El Lago Sensor Network</div>
       <div className="section-sub">In-ground sensor telemetry · soil temperature, plant-available water, electrical conductivity</div>
 
       {/* Status badge */}
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--mono)', fontSize: 9, padding: '3px 9px', borderRadius: 4, border: `0.5px solid rgba(255,180,2,${live ? '.6' : '.3'})`, background: 'var(--dark2)', color: '#FFB402', marginBottom: 14 }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: live ? '#FFB402' : '#666', display: 'inline-block' }} />
-        {isLoading ? 'SOILSENSE · LOADING…' : live
-          ? `SOILSENSE · LIVE · ${summary.onlineSensors}/${summary.totalSensors} SENSORS`
-          : 'SOILSENSE · STAGING API PENDING · MOCK DATA'}
+        {isLoading ? 'GAIAN-SOILSENSOR · LOADING…' : live
+          ? `GAIAN-SOILSENSOR · LIVE · ${summary.onlineSensors}/${summary.totalSensors} SENSORS`
+          : 'GAIAN-SOILSENSOR · STAGING API PENDING · MOCK DATA'}
       </div>
 
       {/* KPI cards */}
@@ -71,7 +71,7 @@ export function XocoSoil() {
         </Card>
 
         {/* Sensor grid */}
-        <Card title={`Sensor network status · ${summary.onlineSensors ?? '?'}/${summary.totalSensors ?? '?'} online`} sub="SoilSense telemetry">
+        <Card title={`Sensor network status · ${summary.onlineSensors ?? '?'}/${summary.totalSensors ?? '?'} online`} sub="Gaian-Soilsensor telemetry">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             {sensors.slice(0, 6).map((s) => {
               const reading = live ? data.readings?.find((r: { sensorId: string }) => r.sensorId === s.id) : null
@@ -96,7 +96,7 @@ export function XocoSoil() {
           )}
           {!live && (
             <div style={{ background: 'rgba(255,180,2,.05)', border: '1px solid rgba(255,180,2,.15)', borderRadius: 7, padding: 10, marginTop: 10 }}>
-              <div style={{ fontSize: 10, color: 'var(--muted)' }}>SoilSense staging API pending — add <code style={{ fontFamily: 'var(--mono)', background: 'rgba(255,255,255,.05)', padding: '1px 4px', borderRadius: 3 }}>SOILSENSE_BASE_URL</code> to Cloud Run env vars when ready.</div>
+              <div style={{ fontSize: 10, color: 'var(--muted)' }}>Gaian-Soilsensor staging API pending — add <code style={{ fontFamily: 'var(--mono)', background: 'rgba(255,255,255,.05)', padding: '1px 4px', borderRadius: 3 }}>SOILSENSE_BASE_URL</code> to Cloud Run env vars when ready.</div>
             </div>
           )}
         </Card>

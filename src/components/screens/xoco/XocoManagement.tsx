@@ -36,13 +36,13 @@ const IRRIGATION = [40, 58, 46, 52, 38]
 export function XocoManagement() {
   return (
     <div>
-      <div className="section-label">Forsler API · Management</div>
+      <div className="section-label">Gaian-Earth Mapping API · Management</div>
       <div className="section-title">Management — Risk, Disease, Irrigation, Minerals</div>
-      <div className="section-sub">Operational decision support from the Forsler management module · four areas Xoco acts on directly</div>
+      <div className="section-sub">Operational decision support from the Gaian-Earth Mapping management module · four areas Xoco acts on directly</div>
 
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--mono)', fontSize: 9, padding: '3px 9px', borderRadius: 4, border: '0.5px solid rgba(167,139,250,.3)', background: 'var(--dark2)', color: '#A78BFA', marginBottom: 14 }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#A78BFA', display: 'inline-block' }} />
-        SOURCE · FORSLER API · management module · mock data
+        SOURCE · GAIAN-EARTH MAPPING API · management module · mock data
       </div>
 
       <div className="grid-4">
@@ -77,9 +77,9 @@ export function XocoManagement() {
 
         <Card title="How management uses the feeds">
           {[
-            { color: '#FFB402', text: 'Risk & irrigation read directly from SoilSense — plant-available water and EC drive the dry-season and irrigation flags.' },
-            { color: '#A78BFA', text: 'Disease pressure correlates with SoilSense humidity and Forsler canopy-density layers — combined to score monilia risk per lote.' },
-            { color: 'var(--green)', text: 'Minerals cross-checks SoilSense EC against periodic lab sampling — EC alone is a salinity proxy, not a full nutrient panel.' },
+            { color: '#FFB402', text: 'Risk & irrigation read directly from Gaian-Soilsensor — plant-available water and EC drive the dry-season and irrigation flags.' },
+            { color: '#A78BFA', text: 'Disease pressure correlates with Gaian-Soilsensor humidity and Gaian-Earth Mapping canopy-density layers — combined to score monilia risk per lote.' },
+            { color: 'var(--green)', text: 'Minerals cross-checks Gaian-Soilsensor EC against periodic lab sampling — EC alone is a salinity proxy, not a full nutrient panel.' },
           ].map((item, i) => (
             <div key={i} style={{ background: 'var(--dark3)', borderLeft: `2px solid ${item.color}`, borderRadius: '0 6px 6px 0', padding: '10px 13px', fontSize: 11, lineHeight: 1.6, color: 'var(--txt)', marginBottom: 8 }}>
               {item.text}

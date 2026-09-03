@@ -22,19 +22,19 @@ export function XocoSiteLayers() {
 
   return (
     <div>
-      <div className="section-label">Forsler API · Spatial Layers</div>
+      <div className="section-label">Gaian-Earth Mapping API · Spatial Layers</div>
       <div className="section-title">Site Layers — El Lago</div>
-      <div className="section-sub">Interactive map with Forsler spatial layers · {totalMaps} maps · {featureCount} features</div>
+      <div className="section-sub">Interactive map with Gaian-Earth Mapping spatial layers · {totalMaps} maps · {featureCount} features</div>
 
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--mono)', fontSize: 9, padding: '3px 9px', borderRadius: 4, border: '0.5px solid rgba(167,139,250,.3)', background: 'var(--dark2)', color: '#A78BFA', marginBottom: 14 }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#A78BFA', display: 'inline-block' }} />
-        SOURCE · FORSLER API · {totalMaps} maps · {featureCount} features live
+        SOURCE · GAIAN-EARTH MAPPING API · {totalMaps} maps · {featureCount} features live
       </div>
 
       {/* KPI row */}
       <div className="grid-3" style={{ marginBottom: 16 }}>
         {[
-          { label: 'Total maps',         value: String(totalMaps),    sub: 'registered in Forsler org',   color: 'var(--green)' },
+          { label: 'Total maps',         value: String(totalMaps),    sub: 'registered in Gaian-Earth Mapping org',   color: 'var(--green)' },
           { label: 'Lotes / features',   value: String(featureCount), sub: 'plots, lotes & key points',  color: 'var(--green)' },
           { label: 'Site area',          value: '95.4 ha',            sub: 'El Lago boundary · registered', color: '#9DFF51'    },
         ].map((m, i) => (
@@ -55,12 +55,12 @@ export function XocoSiteLayers() {
         />
       ) : (
         <div style={{ height: 480, background: 'var(--dark2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--bd)', marginBottom: 16 }}>
-          <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--muted)' }}>Loading map data from Forsler…</span>
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--muted)' }}>Loading map data from Gaian-Earth Mapping…</span>
         </div>
       )}
 
       {/* Layer register */}
-      <Card title="Layer register" sub="Live from Forsler API" style={{ marginTop: 16 }}>
+      <Card title="Layer register" sub="Live from Gaian-Earth Mapping API" style={{ marginTop: 16 }}>
         <table className="data-table">
           <thead><tr><th>Layer</th><th>Geometry</th><th>Features</th><th>Use</th><th>Status</th></tr></thead>
           <tbody>
@@ -86,7 +86,7 @@ export function XocoSiteLayers() {
               <td><Pill variant="g">TAGGED</Pill></td>
             </tr>
             <tr>
-              <td style={{ fontWeight: 600, color: 'white' }}>SoilSense grid</td>
+              <td style={{ fontWeight: 600, color: 'white' }}>Gaian-Soilsensor grid</td>
               <td>Points</td>
               <td style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>3×3</td>
               <td style={{ color: 'var(--muted)' }}>Soil sensor positions</td>

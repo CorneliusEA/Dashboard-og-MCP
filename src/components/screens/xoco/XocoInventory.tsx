@@ -29,13 +29,13 @@ export function XocoInventory() {
 
   return (
     <div>
-      <div className="section-label">Forsler API · Inventory</div>
+      <div className="section-label">Gaian-Earth Mapping API · Inventory</div>
       <div className="section-title">Inventory &amp; Carbon — El Lago</div>
-      <div className="section-sub">Tree inventory, biomass, carbon calculation and site infrastructure from Forsler · verified by Sentinel-2</div>
+      <div className="section-sub">Tree inventory, biomass, carbon calculation and site infrastructure from Gaian-Earth Mapping · verified by Sentinel-2</div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
         {[
-          { color: '#A78BFA', label: 'FORSLER · INVENTORY' },
+          { color: '#A78BFA', label: 'GAIAN-EARTH MAPPING · INVENTORY' },
           { color: 'var(--green)', label: `SENTINEL-2 · ${carbon?.vegetationHealth ?? 'GOOD'}` },
         ].map((t, i) => (
           <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--mono)', fontSize: 9, padding: '3px 9px', borderRadius: 4, border: '0.5px solid var(--bd)', background: 'var(--dark2)', letterSpacing: '.04em', color: t.color }}>
@@ -48,10 +48,10 @@ export function XocoInventory() {
 
       <div className="grid-4">
         {[
-          { label: 'Forsler features', src: 'FORSLER', value: String(features), sub: 'plots, lotes & key points', srcColor: '#A78BFA' },
+          { label: 'Gaian-Earth Mapping features', src: 'GAIAN-EARTH MAPPING', value: String(features), sub: 'plots, lotes & key points', srcColor: '#A78BFA' },
           { label: 'Carbon stock', src: 'SENTINEL-2', value: `${co2e.toLocaleString()} tCO₂e`, sub: `${perHa} tCO₂e/ha · NDVI ${ndvi.toFixed(2)}`, srcColor: 'var(--green)' },
-          { label: 'Total area', src: 'FORSLER', value: '95.4 ha', sub: `${maps} Forsler maps registered`, srcColor: '#A78BFA' },
-          { label: 'Data sufficiency', src: 'FORSLER', value: `${suff}%`, sub: 'VM0047 threshold 80%', srcColor: suff >= 80 ? 'var(--green)' : '#FFB402' },
+          { label: 'Total area', src: 'GAIAN-EARTH MAPPING', value: '95.4 ha', sub: `${maps} Gaian-Earth Mapping maps registered`, srcColor: '#A78BFA' },
+          { label: 'Data sufficiency', src: 'GAIAN-EARTH MAPPING', value: `${suff}%`, sub: 'VM0047 threshold 80%', srcColor: suff >= 80 ? 'var(--green)' : '#FFB402' },
         ].map((m, i) => (
           <div key={i} className="metric" style={{ borderLeft: `2px solid ${m.srcColor}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, fontFamily: 'var(--mono)', color: 'var(--muted)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 4 }}>
@@ -64,7 +64,7 @@ export function XocoInventory() {
       </div>
 
       <div className="grid-65">
-        <Card title="Species inventory" sub="Forsler biomass inventory · Somarriba 2013 methodology">
+        <Card title="Species inventory" sub="Gaian-Earth Mapping biomass inventory · Somarriba 2013 methodology">
           <table className="data-table">
             <thead><tr><th>Species</th><th>Role</th><th>Avg DBH</th><th>Carbon density</th></tr></thead>
             <tbody>
@@ -98,7 +98,7 @@ export function XocoInventory() {
               </div>
             ))}
             <div style={{ background: 'rgba(167,139,250,.06)', borderLeft: '2px solid #A78BFA', borderRadius: '0 6px 6px 0', padding: '10px 13px', fontSize: 10.5, lineHeight: 1.6, color: 'var(--muted)', marginTop: 8 }}>
-              Carbon figures from Forsler inventory + Sentinel-2 NDVI verification. Verra VM0047 first issuance requires 80% data sufficiency — currently {suff}%.
+              Carbon figures from Gaian-Earth Mapping inventory + Sentinel-2 NDVI verification. Verra VM0047 first issuance requires 80% data sufficiency — currently {suff}%.
             </div>
           </Card>
 

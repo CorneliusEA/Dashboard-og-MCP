@@ -1,6 +1,6 @@
 'use client'
 
-export type XocoTab = 'overview' | 'biodiversity' | 'soil' | 'inventory' | 'layers' | 'management' | 'eudr'
+export type XocoTab = 'overview' | 'biodiversity' | 'soil' | 'weather' | 'inventory' | 'layers' | 'management' | 'eudr'
 
 interface Props {
   activeTab: XocoTab
@@ -9,9 +9,10 @@ interface Props {
 
 const ITEMS: { tab: XocoTab; label: string; section?: string; color: string; badge?: string; badgeClass?: string }[] = [
   { tab: 'overview',     label: 'Overview',          section: 'Pilot',         color: 'var(--green)',   badge: 'Live',  badgeClass: 'g' },
-  { tab: 'biodiversity', label: 'Biodiversity',       section: 'XNatura',       color: '#22D3EE',        badge: 'OK',    badgeClass: 'g' },
-  { tab: 'soil',         label: 'Soil sensors',       section: 'SoilSense',     color: '#FFB402',        badge: '1⚠',   badgeClass: 'a' },
-  { tab: 'inventory',    label: 'Inventory & carbon', section: 'Forsler',       color: '#A78BFA',        badge: 'OK',    badgeClass: 'g' },
+  { tab: 'biodiversity', label: 'Biodiversity',       section: 'Gaian-Natura',       color: '#22D3EE',        badge: 'OK',    badgeClass: 'g' },
+  { tab: 'soil',         label: 'Soil sensors',       section: 'Gaian-Soilsensor',     color: '#FFB402',        badge: '1⚠',   badgeClass: 'a' },
+  { tab: 'weather',      label: 'Weather',            section: 'Weather',       color: '#60A5FA',        badge: 'Live',  badgeClass: 'g' },
+  { tab: 'inventory',    label: 'Inventory & carbon', section: 'Gaian-Earth Mapping',       color: '#A78BFA',        badge: 'OK',    badgeClass: 'g' },
   { tab: 'layers',       label: 'Site layers',        color: '#A78BFA',        badge: '3',    badgeClass: 'g' },
   { tab: 'management',   label: 'Management',         color: '#A78BFA',        badge: '2⚠',  badgeClass: 'a' },
   { tab: 'eudr',         label: 'EUDR',               section: 'Compliance',   color: '#60A5FA',        badge: 'Ready', badgeClass: 'g' },
@@ -47,7 +48,7 @@ export function XocoSidebar({ activeTab, onTabChange }: Props) {
         <div className="xoco-sb-meta-k">Pilot site</div>
         <div className="xoco-sb-meta-v">El Lago · Nicaragua · 95.4 ha</div>
         <div className="xoco-sb-meta-k">Data feeds</div>
-        <div className="xoco-sb-meta-v">XNatura · SoilSense · Forsler</div>
+        <div className="xoco-sb-meta-v">Gaian-Natura · Gaian-Soilsensor · Gaian-Earth Mapping</div>
       </div>
     </div>
   )
