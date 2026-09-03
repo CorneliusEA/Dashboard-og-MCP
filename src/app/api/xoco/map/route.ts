@@ -5,10 +5,21 @@ export const revalidate = 300
 
 const XOCO_ESTATES = ['Xoco Gourmet', 'Xoco Frank']
 
-function layerColor(categories: string[]): string {
+// Real Forsler features never populate the top-level `categories` field —
+// it lives at `properties.categories` instead (confirmed against live data
+// 2026-09-03; every feature had categories: [] at the top level while
+// properties.categories had real tags like "omrids", "lotes", "forest").
+// Classification signal found in real data: exactly one ~114ha polygon
+// tagged "omrids" (Danish for "outline/perimeter") is the whole-property
+// boundary; polygons tagged "lotes" are individual plots. Everything else
+// non-Point defaults to the lotes bucket (still renders correctly as a
+// polygon either way, just affects which toggle/color group it's in).
+function layerColor(categories: string[], geomType?: string): string {
+  if (geomType === 'Point') return 'points'
   const c = categories.join(' ').toLowerCase()
-  if (c.includes('boundary') || c.includes('omrids') || c.includes('finca')) return 'boundary'
-  if (c.includes('lote') || c.includes('plot') || c.includes('estacion')) return 'lotes'
+  if (c.includes('omrids') || c.includes('boundary') || c.includes('perimeter') || c.includes('skel')) return 'boundary'
+  if (c.includes('lote') || c.includes('plot')) return 'lotes'
+  if (geomType === 'Polygon' || geomType === 'MultiPolygon' || geomType === 'LineString') return 'lotes'
   return 'points'
 }
 
@@ -32,11 +43,13 @@ export async function GET() {
           const features = await searchMapFeatures(map.id)
           for (const f of features) {
             if (!f.geometry) continue
-            const layer = layerColor(f.categories ?? [])
+            const props = (f.properties ?? {}) as { id?: string; categories?: string[] }
+            const categories = props.categories ?? []
+            const layer = layerColor(categories, f.geometry.type)
             layers[layer].features.push({
               type: 'Feature',
-              id: f.id,
-              properties: { id: f.id, name: f.name ?? map.name, categories: f.categories, mapName: map.name },
+              id: props.id,
+              properties: { id: props.id, name: f.name ?? map.name, categories, mapName: map.name },
               geometry: f.geometry,
             })
           }
