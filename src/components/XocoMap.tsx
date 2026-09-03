@@ -106,9 +106,14 @@ export function XocoMap({ data, landCoverUrl, landCoverBounds }: XocoMapProps) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           style: (f: any) => {
             const geomType = f?.geometry?.type
-            return geomType === 'Point'
-              ? {}
-              : { color, weight: geomType === 'Polygon' || geomType === 'MultiPolygon' ? 2 : 1.5, fillColor: color, fillOpacity: 0.12 }
+            if (geomType === 'Point') return {}
+            return {
+              color,
+              weight: geomType === 'Polygon' || geomType === 'MultiPolygon' ? 2 : 1.5,
+              fillColor: color,
+              fillOpacity: key === 'boundary' ? 0 : 0.12,
+              dashArray: key === 'boundary' ? '6, 6' : undefined,
+            }
           },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           pointToLayer: (_f: any, latlng: any) =>
