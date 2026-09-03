@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
 import { searchMaps, searchMapFeatures } from '@/lib/forsler'
 
-export const revalidate = 300
+// force-dynamic, not ISR — see src/app/api/sentinel/route.ts for why:
+// a route that always returns 200 gets statically baked in at Docker
+// build time (no runtime env vars available then) otherwise. This is the
+// exact bug that caused the boundary/lotes layers to stay empty even
+// after the Forsler credential fix and the categories-path fix landed.
+export const dynamic = 'force-dynamic'
 
 const XOCO_ESTATES = ['Xoco Gourmet', 'Xoco Frank']
 

@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { fetchNDVI, BBOXES } from '@/lib/sentinel'
 
-export const revalidate = 3600
+// force-dynamic, not ISR — see src/app/api/sentinel/route.ts for why:
+// a route that always returns 200 gets statically baked in at Docker
+// build time (no runtime env vars available then) otherwise.
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const TOTAL_HA = 95.4

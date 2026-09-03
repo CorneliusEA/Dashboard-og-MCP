@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
 import { fetchNDVI } from '@/lib/sentinel'
 
-export const revalidate = 3600 // cache 1 hour
+// force-dynamic, not ISR: this route always returns 200 (even its catch
+// block falls back to modelled data with a 200 status), so Next.js was
+// statically pre-rendering it at Docker BUILD time — when Cloud Build has
+// no access to the Cloud Run service's runtime env vars, guaranteeing a
+// permanently-cached failure response regardless of real credentials.
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
