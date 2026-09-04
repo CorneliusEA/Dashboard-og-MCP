@@ -11,7 +11,15 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const searchParams = useSearchParams()
   const router = useRouter()
-  const from = searchParams.get('from') ?? '/'
+  // NextAuth's own withAuth middleware appends `callbackUrl` (not `from`)
+  // when it redirects an unauthenticated visit to /login — e.g. visiting
+  // /xoco while logged out lands here as /login?callbackUrl=%2Fxoco. This
+  // page only ever checked `from`, so that param was silently ignored and
+  // login always landed back on the portal instead of the page the user
+  // actually wanted. `error=access` (the custom middleware's own redirect
+  // for "logged in but lacking that scope") intentionally has neither
+  // param — defaulting to '/' there is correct, not a bug.
+  const from = searchParams.get('callbackUrl') ?? searchParams.get('from') ?? '/'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
