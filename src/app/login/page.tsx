@@ -59,7 +59,7 @@ function LoginForm() {
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <img src="/es-logo.svg" alt="Earth Surveillance" style={{ height: 28, width: 'auto', marginBottom: 10 }} />
+          <img src="/es-logo.svg" alt="Earth Surveillance" style={{ height: 40, width: 'auto', marginBottom: 10 }} />
           <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--mono)', letterSpacing: '.08em' }}>
             NATURAL CAPITAL INTELLIGENCE
           </div>

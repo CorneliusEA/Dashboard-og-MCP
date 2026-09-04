@@ -83,7 +83,7 @@ export default function Portal() {
 
       {/* Topbar */}
       <div className="topbar">
-        <img src="/es-logo.svg" alt="Earth Surveillance" style={{ height: 16, width: 'auto', marginRight: 16 }} />
+        <img src="/es-logo.svg" alt="Earth Surveillance" style={{ height: 24, width: 'auto', marginRight: 16 }} />
         <span className="logo-sep">/</span>
         <span className="logo-context">Client Portal</span>
         <div style={{ flex: 1 }} />

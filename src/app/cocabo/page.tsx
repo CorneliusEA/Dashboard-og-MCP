@@ -38,7 +38,7 @@ function CocaboTopBar() {
   return (
     <div className="topbar">
       <Link href="/" style={{ textDecoration: 'none' }}>
-        <img src="/es-logo.svg" alt="Earth Surveillance" style={{ height: 16, width: 'auto', marginRight: 16, cursor: 'pointer' }} />
+        <img src="/es-logo.svg" alt="Earth Surveillance" style={{ height: 24, width: 'auto', marginRight: 16, cursor: 'pointer' }} />
       </Link>
       <span className="logo-sep">/</span>
       <span className="logo-context" style={{ color: 'var(--green)' }}>COCABO · Bocas del Toro, Panama</span>
