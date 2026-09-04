@@ -120,7 +120,16 @@ export async function fetchLandCoverImage(bbox = XOCO_BBOX, maxDim = 1024): Prom
   const height = aspect >= 1 ? Math.round(maxDim / aspect) : maxDim
 
   const to = new Date().toISOString().split('T')[0]
-  const from = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+  // 90 days + relaxed cloud threshold + leastCC mosaicking, not the 30-day/
+  // 30%-cloud window used for NDVI stats elsewhere in this file. Verified
+  // against real data: for Xoco's small bbox, that tighter window returned
+  // ZERO usable Sentinel-2 acquisitions during Nicaragua's rainy season —
+  // every pixel came back fully transparent (dataMask 0 everywhere), not a
+  // rendering bug, just no cloud-free pass in range. mosaickingOrder
+  // "leastCC" lets Sentinel Hub composite the least-cloudy pixel per
+  // location across the whole window instead of requiring one single
+  // clear-sky pass over the entire bbox at once.
+  const from = new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0]
 
   const body = {
     input: {
@@ -128,7 +137,11 @@ export async function fetchLandCoverImage(bbox = XOCO_BBOX, maxDim = 1024): Prom
       data: [
         {
           type: 'sentinel-2-l2a',
-          dataFilter: { timeRange: { from: `${from}T00:00:00Z`, to: `${to}T23:59:59Z` }, maxCloudCoverage: 30 },
+          dataFilter: {
+            timeRange: { from: `${from}T00:00:00Z`, to: `${to}T23:59:59Z` },
+            maxCloudCoverage: 80,
+            mosaickingOrder: 'leastCC',
+          },
         },
       ],
     },
