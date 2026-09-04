@@ -53,6 +53,11 @@ export function XocoMap({ data, landCoverUrl, landCoverBounds }: XocoMapProps) {
     points: true,
     landcover: false,
   })
+  // Leaflet's ImageOverlay fails completely silently on a load error — no
+  // broken-image icon, nothing in the UI, just stays invisible forever.
+  // Track load state explicitly so a real failure is visible instead of
+  // looking identical to "still deciding whether to show colors."
+  const [landCoverStatus, setLandCoverStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle')
 
   // Init map once
   useEffect(() => {
@@ -88,8 +93,13 @@ export function XocoMap({ data, landCoverUrl, landCoverBounds }: XocoMapProps) {
         const [minLon, minLat, maxLon, maxLat] = landCoverBounds
         const bounds = L.latLngBounds([minLat, minLon], [maxLat, maxLon])
         const overlay = L.imageOverlay(landCoverUrl, bounds, { opacity: 1 })
+        overlay.on('load', () => setLandCoverStatus('loaded'))
+        overlay.on('error', () => setLandCoverStatus('error'))
         landCoverRef.current = overlay
-        if (visible.landcover) overlay.addTo(map)
+        if (visible.landcover) {
+          setLandCoverStatus('loading')
+          overlay.addTo(map)
+        }
       }
 
       // Add GeoJSON layers
@@ -182,6 +192,7 @@ export function XocoMap({ data, landCoverUrl, landCoverBounds }: XocoMapProps) {
     }
     if (landCoverRef.current) {
       if (visible.landcover) {
+        setLandCoverStatus((s) => (s === 'loaded' ? s : 'loading'))
         leafletMap.current.addLayer(landCoverRef.current)
       } else {
         leafletMap.current.removeLayer(landCoverRef.current)
@@ -264,10 +275,19 @@ export function XocoMap({ data, landCoverUrl, landCoverBounds }: XocoMapProps) {
             </label>
             {visible.landcover && (
               <div style={{ fontSize: 8.5, fontFamily: 'var(--mono)', color: 'var(--muted)', lineHeight: 1.7, paddingLeft: 17 }}>
+                {landCoverStatus === 'loading' && <div style={{ color: '#FFB402' }}>⏳ loading image…</div>}
+                {landCoverStatus === 'error' && (
+                  <div style={{ color: '#E63A3A' }}>
+                    ✕ image failed to load —{' '}
+                    <a href={landCoverUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#E63A3A', textDecoration: 'underline' }}>
+                      open directly
+                    </a>
+                  </div>
+                )}
                 <div><span style={{ color: '#22CC5C' }}>■</span> Forest / dense vegetation</div>
                 <div><span style={{ color: '#FFB402' }}>■</span> Sparse vegetation / soil</div>
                 <div><span style={{ color: '#E63A3A' }}>■</span> Bare ground / built-up</div>
-                <div style={{ marginTop: 3, color: 'var(--muted)', opacity: 0.7 }}>NDVI-derived · Sentinel-2 · 30d</div>
+                <div style={{ marginTop: 3, color: 'var(--muted)', opacity: 0.7 }}>NDVI-derived · Sentinel-2 · 90d</div>
               </div>
             )}
           </>
