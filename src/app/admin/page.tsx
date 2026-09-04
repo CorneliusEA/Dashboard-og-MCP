@@ -169,7 +169,7 @@ export default function AdminPage() {
       {/* Topbar */}
       <div className="topbar">
         <Link href="/" style={{ textDecoration: 'none' }}>
-          <span className="logo" style={{ cursor: 'pointer' }}>EARTH SURVEILLANCE</span>
+          <img src="/es-logo.svg" alt="Earth Surveillance" style={{ height: 16, width: 'auto', marginRight: 16, cursor: 'pointer' }} />
         </Link>
         <span className="logo-sep">/</span>
         <span className="logo-context" style={{ color: '#60A5FA' }}>Admin · User Management</span>
