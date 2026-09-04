@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
+import { signIn, getSession } from 'next-auth/react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Suspense } from 'react'
 
@@ -19,19 +19,34 @@ function LoginForm() {
   // actually wanted. `error=access` (the custom middleware's own redirect
   // for "logged in but lacking that scope") intentionally has neither
   // param — defaulting to '/' there is correct, not a bug.
-  const from = searchParams.get('callbackUrl') ?? searchParams.get('from') ?? '/'
+  const explicitTarget = searchParams.get('callbackUrl') ?? searchParams.get('from')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
     const res = await signIn('credentials', { email, password, redirect: false })
-    setLoading(false)
-    if (res?.ok) {
-      router.push(from)
-    } else {
+    if (!res?.ok) {
+      setLoading(false)
       setError('Wrong email or password')
+      return
     }
+
+    if (explicitTarget) {
+      router.push(explicitTarget)
+      return
+    }
+
+    // No specific page was requested (a plain visit to /login, not a
+    // deep-link bounce) — a user scoped to exactly one dashboard should
+    // land there directly instead of the multi-client portal, since they
+    // can't open the other card anyway. '*'-access and multi-dashboard
+    // users still get the portal, where the picker is actually useful.
+    const session = await getSession()
+    const access = (session?.user as { access?: string[] } | undefined)?.access ?? []
+    const singleScope = !access.includes('*') && access.length === 1 ? access[0] : null
+    setLoading(false)
+    router.push(singleScope ? `/${singleScope}` : '/')
   }
 
   return (

@@ -6,6 +6,15 @@ interface LayerData {
   name: string
   color: string
   features: unknown[]
+  /** Outline-only, dashed style (e.g. a site/property boundary) instead of a filled shape. */
+  dashed?: boolean
+  /** Included when fitting the map's initial view. Layers with far-flung or bulk/unverified
+   *  data (a distant outgrower site, an unverified cadastral dump) should leave this false so
+   *  they don't force the default view to zoom out to the point of hiding everything else. */
+  preferred?: boolean
+  /** Whether this layer starts toggled on. Defaults to true if omitted — set false for
+   *  layers that shouldn't clutter the view by default (e.g. bulk/unverified data). */
+  defaultVisible?: boolean
 }
 
 interface MapData {
@@ -47,11 +56,15 @@ export function XocoMap({ data, landCoverUrl, landCoverBounds }: XocoMapProps) {
   const landCoverRef = useRef<any>(null)
 
   const [basemap, setBasemap] = useState<'satellite' | 'street'>('satellite')
-  const [visible, setVisible] = useState<Record<string, boolean>>({
-    boundary: true,
-    lotes: true,
-    points: true,
-    landcover: false,
+  // Derived from the actual layers passed in, not a hardcoded key list —
+  // a layer with no explicit `defaultVisible` starts on; `landcover` (not
+  // a data.layers entry, handled separately below) always starts off.
+  const [visible, setVisible] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = { landcover: false }
+    for (const [key, layer] of Object.entries(data.layers)) {
+      initial[key] = layer.defaultVisible ?? true
+    }
+    return initial
   })
   // Leaflet's ImageOverlay fails completely silently on a load error — no
   // broken-image icon, nothing in the UI, just stays invisible forever.
@@ -102,15 +115,11 @@ export function XocoMap({ data, landCoverUrl, landCoverBounds }: XocoMapProps) {
         }
       }
 
-      // Add GeoJSON layers
-      const COLORS: Record<string, string> = {
-        boundary: '#A78BFA',
-        lotes: '#9DFF51',
-        points: '#FFB402',
-      }
-
+      // Add GeoJSON layers — styling comes from each layer's own data
+      // (color/dashed), not a hardcoded key list, so this component works
+      // for any dashboard's layer set, not just Xoco's boundary/lotes/points.
       for (const [key, layer] of Object.entries(data.layers)) {
-        const color = layer.color ?? COLORS[key] ?? '#fff'
+        const color = layer.color ?? '#fff'
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const geo = L.geoJSON({ type: 'FeatureCollection', features: layer.features } as any, {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -121,8 +130,8 @@ export function XocoMap({ data, landCoverUrl, landCoverBounds }: XocoMapProps) {
               color,
               weight: geomType === 'Polygon' || geomType === 'MultiPolygon' ? 2 : 1.5,
               fillColor: color,
-              fillOpacity: key === 'boundary' ? 0 : 0.12,
-              dashArray: key === 'boundary' ? '6, 6' : undefined,
+              fillOpacity: layer.dashed ? 0 : 0.12,
+              dashArray: layer.dashed ? '6, 6' : undefined,
             }
           },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -140,21 +149,26 @@ export function XocoMap({ data, landCoverUrl, landCoverBounds }: XocoMapProps) {
               { maxWidth: 200 }
             )
           },
-        }).addTo(map)
+        })
+        if (layer.defaultVisible ?? true) geo.addTo(map)
 
         layerRefs.current[key] = geo
       }
 
-      // Fit bounds to the farm itself, not every feature on the account.
-      // Some orgs include far-away outgrower sites (e.g. a supplier farm
-      // 90km from the main site) in the same Forsler org — fitting bounds
-      // to ALL layers combined would zoom out to include those too,
-      // shrinking the actual farm (and the land-cover overlay) to an
-      // invisible speck. Prefer the boundary layer's own extent; fall back
-      // to lotes, then to everything, only if boundary/lotes are empty.
+      // Fit bounds to the real site data, not every feature on the account.
+      // Some orgs include far-away or bulk/unverified data in the same
+      // layer set (a supplier farm 90km from the main site; a 1,198-
+      // feature "cadastral reference" dump that isn't actually registered
+      // farmer data) — fitting bounds to ALL layers combined would zoom
+      // out to include those too, shrinking the real site to an invisible
+      // speck. Each API route marks which of its layers are trustworthy
+      // for this via `preferred`; fall back to everything only if none are.
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const preferredLayers = [layerRefs.current.boundary, layerRefs.current.lotes].filter(Boolean) as any[]
+        const preferredLayers = Object.entries(data.layers)
+          .filter(([, layer]) => layer.preferred)
+          .map(([key]) => layerRefs.current[key])
+          .filter(Boolean) as any[]
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const fallbackLayers = Object.values(layerRefs.current) as any[]
         const group = L.featureGroup(preferredLayers.length > 0 ? preferredLayers : fallbackLayers)
@@ -200,9 +214,6 @@ export function XocoMap({ data, landCoverUrl, landCoverBounds }: XocoMapProps) {
     }
   }, [visible])
 
-  const COLORS: Record<string, string> = { boundary: '#A78BFA', lotes: '#9DFF51', points: '#FFB402' }
-  const LABELS: Record<string, string> = { boundary: 'Site boundary', lotes: 'Lotes / plots', points: 'Key points' }
-
   return (
     <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--bd)' }}>
       {/* Map container */}
@@ -232,8 +243,13 @@ export function XocoMap({ data, landCoverUrl, landCoverBounds }: XocoMapProps) {
 
         <div style={{ height: 1, background: 'var(--bd2)' }} />
 
-        {/* Layer toggles */}
-        {Object.entries(LABELS).map(([key, label]) => (
+        {/* Layer toggles — one per entry in data.layers, using each
+            layer's own name/color rather than a hardcoded key list */}
+        {Object.entries(data.layers).map(([key, layer]) => {
+          const isPointLayer = layer.features.length > 0 &&
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (layer.features as any[]).every((f) => f?.geometry?.type === 'Point')
+          return (
           <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', userSelect: 'none' }}>
             <input
               type="checkbox"
@@ -242,16 +258,17 @@ export function XocoMap({ data, landCoverUrl, landCoverBounds }: XocoMapProps) {
               style={{ display: 'none' }}
             />
             <span style={{
-              width: 10, height: 10, borderRadius: key === 'points' ? '50%' : 2,
-              background: visible[key] ? COLORS[key] : 'transparent',
-              border: `1.5px solid ${COLORS[key]}`,
+              width: 10, height: 10, borderRadius: isPointLayer ? '50%' : 2,
+              background: visible[key] ? layer.color : 'transparent',
+              border: `1.5px solid ${layer.color}`,
               display: 'inline-block', flexShrink: 0,
             }} />
             <span style={{ fontSize: 10, color: visible[key] ? '#fff' : 'var(--muted)', fontFamily: 'var(--mono)' }}>
-              {label}
+              {layer.name}
             </span>
           </label>
-        ))}
+          )
+        })}
 
         {landCoverUrl && landCoverBounds && (
           <>

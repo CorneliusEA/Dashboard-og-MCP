@@ -35,9 +35,13 @@ export async function GET() {
       XOCO_ESTATES.some(e => (m.estateName ?? '').includes(e))
     )
 
-    const layers: Record<string, { type: string; name: string; color: string; features: unknown[] }> = {
-      boundary: { type: 'FeatureCollection', name: 'Site Boundary', color: '#A78BFA', features: [] },
-      lotes:    { type: 'FeatureCollection', name: 'Lotes / Plots',  color: '#9DFF51', features: [] },
+    const layers: Record<string, { type: string; name: string; color: string; features: unknown[]; dashed?: boolean; preferred?: boolean }> = {
+      boundary: { type: 'FeatureCollection', name: 'Site Boundary', color: '#A78BFA', features: [], dashed: true, preferred: true },
+      lotes:    { type: 'FeatureCollection', name: 'Lotes / Plots',  color: '#9DFF51', features: [], preferred: true },
+      // Not marked `preferred` — real data includes a genuine outgrower
+      // site ~90km from the main farm with no distinguishing category tag,
+      // so it lands in this bucket. Including it in fitBounds would zoom
+      // the map out to the point of hiding the actual farm.
       points:   { type: 'FeatureCollection', name: 'Key Points',     color: '#FFB402', features: [] },
     }
 

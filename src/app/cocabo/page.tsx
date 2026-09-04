@@ -1,32 +1,73 @@
 'use client'
-import { useState } from 'react'
-import { TopBar } from '@/components/TopBar'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { CocaboSidebar, type CocaboTab } from '@/components/CocaboSidebar'
 import { Overview } from '@/components/screens/Overview'
-import { EUDR } from '@/components/screens/EUDR'
+import { CocaboBiodiversity } from '@/components/screens/cocabo/CocaboBiodiversity'
+import { CocaboSoil } from '@/components/screens/cocabo/CocaboSoil'
+import { CocaboWeather } from '@/components/screens/cocabo/CocaboWeather'
 import { Carbon } from '@/components/screens/Carbon'
+import { CocaboSiteLayers } from '@/components/screens/cocabo/CocaboSiteLayers'
+import { EUDR } from '@/components/screens/EUDR'
 import { ELedger } from '@/components/screens/ELedger'
-import { Biodiversity } from '@/components/screens/Biodiversity'
 import { Finance } from '@/components/screens/Finance'
 
-type Tab = 'overview' | 'eudr' | 'carbon' | 'eledger' | 'biodiversity' | 'finance'
-
-const SCREENS: Record<Tab, React.ReactNode> = {
+const SCREENS: Record<CocaboTab, React.ReactNode> = {
   overview: <Overview />,
+  biodiversity: <CocaboBiodiversity />,
+  soil: <CocaboSoil />,
+  weather: <CocaboWeather />,
+  inventory: <Carbon />,
+  layers: <CocaboSiteLayers />,
   eudr: <EUDR />,
-  carbon: <Carbon />,
   eledger: <ELedger />,
-  biodiversity: <Biodiversity />,
   finance: <Finance />,
 }
 
+function CocaboTopBar() {
+  const [clock, setClock] = useState('--:--:--')
+
+  useEffect(() => {
+    const tick = () =>
+      setClock(new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Panama' }) + ' PAN')
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <div className="topbar">
+      <Link href="/" style={{ textDecoration: 'none' }}>
+        <span className="logo" style={{ cursor: 'pointer' }}>EARTH SURVEILLANCE</span>
+      </Link>
+      <span className="logo-sep">/</span>
+      <span className="logo-context" style={{ color: 'var(--green)' }}>COCABO · Bocas del Toro, Panama</span>
+      <div className="nav-tabs">
+        <div className="nav-tab active" style={{ color: 'var(--green)', borderBottomColor: 'var(--green)', pointerEvents: 'none' }}>
+          NATURAL CAPITAL MONITOR
+        </div>
+      </div>
+      <div className="topbar-right">
+        <span className="phase-badge">PHASE 1 · PRE-DISCOVERY</span>
+        <div className="live-dot" />
+        <span className="live-label">LIVE</span>
+        <span className="clock">{clock}</span>
+      </div>
+    </div>
+  )
+}
+
 export default function CocaboDashboard() {
-  const [activeTab, setActiveTab] = useState<Tab>('overview')
+  const [activeTab, setActiveTab] = useState<CocaboTab>('overview')
 
   return (
     <>
-      <TopBar activeTab={activeTab} onTabChange={setActiveTab} />
-      <div className="screens">
-        <div className="screen">{SCREENS[activeTab]}</div>
+      <CocaboTopBar />
+      <div className="xoco-body">
+        <CocaboSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <div className="xoco-screens">
+          <div className="screen">{SCREENS[activeTab]}</div>
+        </div>
       </div>
     </>
   )
