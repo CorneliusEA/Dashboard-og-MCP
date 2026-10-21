@@ -11,7 +11,7 @@ export function registerGfwTool(server: McpServer) {
     {
       title: 'Global Forest Watch',
       description:
-        'Tree cover loss by year, or a count of recent deforestation alerts, from Global Forest Watch for a known estate (cocabo, xoco) or custom bbox. Requires GFW_API_KEY — not yet verified against a real key.',
+        'Tree cover loss by year, or a count of recent deforestation alerts, from Global Forest Watch for a known estate (cocabo, xoco) or custom bbox. Requires GFW_API_KEY — confirmed working against a real key 2026-08-26.',
       inputSchema: {
         action: z.enum(['tree_cover_loss', 'recent_alerts']),
         estate: z.enum(['cocabo', 'xoco']).optional().describe('Named estate bbox to use'),

@@ -9,14 +9,18 @@ export function registerFirmsTool(server: McpServer) {
     {
       title: 'NASA FIRMS fire/thermal alerts',
       description:
-        'Near-real-time satellite fire/thermal anomaly detections from NASA FIRMS for a known estate (cocabo, xoco) or custom bbox, over the last N days. Requires FIRMS_MAP_KEY (free signup) — not yet verified against a real key.',
+        'Near-real-time satellite fire/thermal anomaly detections from NASA FIRMS for a known estate (cocabo, xoco) or custom bbox, over the last N days. Requires FIRMS_MAP_KEY (free signup) — confirmed working against a real key.',
       inputSchema: {
         estate: z.enum(['cocabo', 'xoco']).optional().describe('Named estate bbox to use'),
         bbox: z
           .tuple([z.number(), z.number(), z.number(), z.number()])
           .optional()
           .describe('Custom [minLon, minLat, maxLon, maxLat] — overrides estate'),
-        dayRange: z.number().optional().describe('Days to look back, 1-10 (default 3)'),
+        // FIRMS' Area API only accepts 1-5 (confirmed live: 7 returns a 400
+        // "Invalid day range. Expects [1..5]."), not 1-10 as this previously
+        // claimed — validating here fails fast with a clear message instead
+        // of a remote 400.
+        dayRange: z.number().int().min(1).max(5).optional().describe('Days to look back, 1-5 (default 3)'),
       },
     },
     async ({ estate, bbox, dayRange }) => {

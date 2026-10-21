@@ -4,9 +4,12 @@
  *
  * Free, but requires a MAP_KEY — get one instantly at
  * https://firms.modaps.eosdis.nasa.gov/api/area/ (no approval wait, just an
- * email signup). Set FIRMS_MAP_KEY once obtained; unlike the other free
- * sources in this file, this one is UNTESTED against a real key so far —
- * verify against real credentials before relying on it.
+ * email signup). Set FIRMS_MAP_KEY once obtained. Confirmed working against
+ * a real key 2026-08-26 and re-verified 2026-10-21: a real active-fire bbox
+ * (Amazon) returns real detections, and FIRMS consistently returns proper
+ * HTTP error codes (400) for invalid params/keys rather than 200-with-error-
+ * text, so an empty result for a small, currently-fire-free bbox is a
+ * genuine zero, not a silently swallowed error.
  */
 
 export interface FirePoint {
