@@ -29,12 +29,58 @@ Free-data enrichment tools (added 2026-08-26, no cost, no dedicated backend):
 | `sentinel_sar` | Sentinel Hub (Sentinel-1) | Same creds as `sentinel_ndvi`. Cloud cover-independent, sensitive to soil/canopy moisture |
 | `global_forest_watch` | GFW Data API | Requires `GFW_API_KEY` (free but multi-step signup, see Status/TODO below) — tested working 2026-08-26 |
 
+Field data from the ES Field App / E-Ledger (added 2026-11-16, **read-only**, Supabase EU/Frankfurt — the only source of truth for field data):
+
+| Tool | Source | Notes |
+|---|---|---|
+| `eledger_farms` | `records` (`modulo=finca`) | Fincas: name, country, region, ha, sector, parcel count. Returns a `farm_key` per farm |
+| `eledger_parcels` | `records` (`modulo=parcela`) | One finca's parcels as GeoJSON FeatureCollection ([lat,lon] → [lon,lat], closed ring) with ha, measured ha, EUDR status |
+| `eledger_records` | `records` | Registrations filtered by farm/parcel/modulo/date, limit ≤ 200, short summary per record |
+| `eledger_emissions` | `records` + `v_gases` (`v_emissions` for `group_by=org_month`) | kg CO2e + CH4/N2O, grouped by farm/parcel/month/modulo |
+| `eledger_species` | `v_observations` + `v_species_ai` | Species finds + AI identifications, per-species summary |
+| `eledger_field_measures` | `v_field_measures` | Soil, water, rain, canopy cover (+ docs/media) with per-modulo aggregates |
+| `eledger_photo_url` | Supabase Storage `photos` bucket | Signed photo link for one record, valid 1 hour |
+
+E-Ledger rules baked into `src/lib/eledger.ts`:
+
+- Logs in with the app's integration account (profile role must be `integracion` — read everything, write nothing). Never the service_role key. Token cached, refreshed before expiry, re-auth once on 401.
+- `farm_id`/`parcel_id` are only unique **per user**, so farms are always keyed on `(user_id, farm_id)`, exposed as an opaque `farm_key` (`<8 hex of sha256(user_id)>:<farm_id>`) — raw user_ids are never returned. A bare `farm_id` shared by several users is rejected with the candidate farm_keys, never merged.
+- Every `records` query filters `data->>superseded_by=is.null` (current versions only). The `v_*` views have no `user_id`, so per-farm results are scoped via `view.id = records.id`. `v_emissions` sums across users sharing a farm_id, so it is only used org-wide per month.
+- Only `GET` with explicit `select=` (plus the storage signing `POST`), pages ≤ 1000 rows, capped per tool with a `truncated` flag. Never reads `profiles`; `recorded_by` initials are the only person identifier, and record summaries drop email/phone/owner-style fields.
+
+Tests: `npm test` (node:test + an in-memory fake of Supabase auth/PostgREST/storage) covers expired/revoked tokens, superseded records, [lat,lon] parcels and two users with the same `farm_id`.
+
 Investigated and **not** added, with reasons:
 
 - **Copernicus DEM** — not available on the free public OpenTopoData instance; `elevation` (SRTM30m) already covers this need.
 - **Copernicus Land Monitoring Service (CORINE Land Cover)** — EU-only coverage, doesn't include Panama/Nicaragua where the estates are.
 - **ESA WorldCover via Sentinel Hub** — tried querying it as a Sentinel Hub collection type, got a clear "invalid collection type" rejection. Might be reachable a different way (openEO, direct COG access) but not confirmed — would need more research before spending more Sentinel Hub API calls guessing at it.
 - **JRC Global Surface Water** — no simple point/bbox REST API; querying arbitrary polygons requires Google Earth Engine (a service account + enabling the Earth Engine API on a GCP project). That's an infrastructure decision, not just a code change — flagging for a decision rather than building silently.
+
+## Access control (`MCP_AUTH_TOKEN`)
+
+Routes and auth live in `src/app.ts`.
+
+- **`MCP_AUTH_TOKEN` set** (Secret Manager): `POST /mcp` requires
+  `Authorization: Bearer <token>`. `POST /mcp/<token>` is accepted too,
+  because claude.ai custom connectors can't send a static header (OAuth
+  only) — they get the secret URL instead. Wrong token → 401 on `/mcp`,
+  404 on `/mcp/<x>`. `GET /health` stays public.
+- **`MCP_AUTH_TOKEN` unset**: open as before, **but the `eledger_*` tools
+  are not registered** — field data is never served unauthenticated.
+
+Turning it on (one-time):
+
+1. Create secret `MCP_AUTH_TOKEN` with a long random value
+   (e.g. `openssl rand -hex 32`).
+2. Cloud Run → `gaian-data-lake-mcp` → expose it as env var
+   `MCP_AUTH_TOKEN` (grant the service account access when prompted).
+3. Change the claude.ai connector URL to
+   `https://gaian-data-lake-mcp-489214757597.europe-west1.run.app/mcp/<token>`.
+   The old `/mcp` URL stops working at the moment step 2 deploys.
+
+Note: the secret-URL form puts the token in Cloud Run request logs; use the
+bearer header from any client that supports it.
 
 ## Architecture rule
 
@@ -72,6 +118,7 @@ values from the Dashboard/EarthSurveillance repos — do not regenerate):
 - `XNATURA_API_KEY`, `XNATURA_SITE_ID`, `XNATURA_USER_SLUG`, `XNATURA_BASE_URL`
 - `EARTHSURVEILLANCE_API_BASE_URL`, `EARTHSURVEILLANCE_EMAIL`, `EARTHSURVEILLANCE_PASSWORD`
 - `SOILSENSE_API_KEY` (and optionally `SOILSENSE_BASE_URL`, defaults to `api.app.soilsense.io`) — see Status/TODO below for the 2026-09-02 rewrite against the real production API.
+- `ELEDGER_SUPABASE_URL`, `ELEDGER_SUPABASE_ANON_KEY` (publishable key, not secret) as plain env vars; `ELEDGER_SUPABASE_EMAIL`, `ELEDGER_SUPABASE_PASSWORD` from Secret Manager (`--update-secrets=ELEDGER_SUPABASE_EMAIL=ELEDGER_SUPABASE_EMAIL:latest,ELEDGER_SUPABASE_PASSWORD=ELEDGER_SUPABASE_PASSWORD:latest`; the service account needs `roles/secretmanager.secretAccessor` on both). Only the `eledger_*` tools need them.
 
 `FIRMS_MAP_KEY` is optional — only `fire_alerts` needs it, everything else
 works without it. Get one free at firms.modaps.eosdis.nasa.gov/api/area.
@@ -181,6 +228,16 @@ sentinel_sar, fire_alerts, global_forest_watch — all tested working.
 **SoilSense (2026-09-02):** rewritten against the real production API and
 now working too — see Status/TODO above for what changed. No longer a
 phase-2 blocker.
+**E-Ledger (2026-11-16):** 7 read-only `eledger_*` tools, unit-tested
+against a fake Supabase and run live against the real project once the
+integration account got role `integracion`: farms, parcels (GeoJSON
+verified at Munkerup, [lon, lat] order correct), records, species, and
+photo signing (signed URL downloads a real JPEG) all return real data.
+Live-data findings fixed: `equipo` module not in the spec (modulo filter is
+free-form now), photo records carry `kg_co2e = 0` (excluded from
+emissions), `v_emissions` is split per farm (merged per org/month). Not yet
+live-verified because the test data has none: non-zero emissions/CH4/N2O
+and `v_field_measures` rows — only covered by the fake-Supabase tests.
 **Remaining phase 2:** Xoco-estate bboxes for sentinel/forsler beyond what
 already works, and Anders' longer source list (ESA, CarbonTrace).
 
