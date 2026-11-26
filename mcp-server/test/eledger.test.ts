@@ -1,6 +1,8 @@
 /**
  * Tests for the E-Ledger tools against an in-memory fake of Supabase
- * (auth + a small PostgREST subset + storage signing). Run: npm test
+ * (auth + a small PostgREST subset incl. or/and logic trees + storage signing).
+ * Data model: app v9.6 shared farms/parcels (farms, parcels, records.farm_uuid,
+ * legacy_map). Run: npm test
  */
 import { test, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
@@ -8,20 +10,22 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { registerEledgerTools } from '../src/tools/eledger.js'
-import {
-  farmKey,
-  parcelGeometryToGeoJSON,
-  resetEledgerSession,
-  select,
-  summarizeData,
-} from '../src/lib/eledger.js'
+import { resetEledgerSession, select, summarizeData, userHash } from '../src/lib/eledger.js'
 
 const URL_ = 'https://fake.supabase.co'
 const ANON = 'sb_publishable_test'
 const U1 = '11111111-1111-1111-1111-111111111111'
 const U2 = '22222222-2222-2222-2222-222222222222'
-const K1 = farmKey(U1, 'F008')
-const K2 = farmKey(U2, 'F008')
+const U3 = '33333333-3333-3333-3333-333333333333'
+// shared farms (uuid ids)
+const FA = 'aaaaaaaa-0000-0000-0000-00000000000a' // "Finca Uno" (U1's F008)
+const FA_COPY = 'aaaaaaaa-0000-0000-0000-0000000000c0' // merged duplicate of FA
+const FB = 'bbbbbbbb-0000-0000-0000-00000000000b' // "Finca Dos" (U2's F008 — same phone number!)
+const FC = 'cccccccc-0000-0000-0000-00000000000c' // "Finca Tres" — not merged yet
+const FC2 = 'cccccccc-0000-0000-0000-0000000000c2' // "Finca Tres" — its unmerged duplicate
+const PA1 = 'aaaaaaaa-1111-0000-0000-000000000001'
+const PA_OLD = 'aaaaaaaa-1111-0000-0000-0000000000f0'
+const PB1 = 'bbbbbbbb-1111-0000-0000-000000000001'
 
 type Row = Record<string, any>
 
@@ -31,7 +35,10 @@ function fixtures(): Record<string, Row[]> {
   const rec = (r: Row): Row => ({
     org_id: 'org1',
     recorded_by: 'XX',
+    farm_id: null,
+    farm_uuid: null,
     parcel_id: null,
+    parcel_uuid: null,
     sector: 'cacao',
     date: null,
     lat: null,
@@ -43,52 +50,73 @@ function fixtures(): Record<string, Row[]> {
     data: {},
     ...r,
   })
+  const farm = (r: Row): Row => ({ org_id: null, country: 'Guatemala', region: null, sector: 'cacao', data: {}, merged_into: null, deleted_at: null, ...r })
+  const ring = [[-82.1, 9.1], [-82.2, 9.1], [-82.2, 9.2], [-82.1, 9.1]]
   return {
+    organizations: [{ id: 'org1', name: 'Xoco Gourmet' }],
+    farms: [
+      farm({ id: FA, org_id: 'org1', name: 'Finca Uno', region: 'Izabal', data: { type: 'individual' } }),
+      farm({ id: FA_COPY, name: 'Finca Uno', merged_into: FA, deleted_at: '2026-11-26T00:00:00Z' }),
+      farm({ id: FB, name: 'Finca Dos', country: 'Nicaragua' }),
+      farm({ id: FC, name: 'Finca Tres' }),
+      farm({ id: FC2, name: 'Finca Tres' }),
+    ],
+    parcels: [
+      { id: PA1, farm_id: FA, name: 'Lote Norte', ha_declared: 2.5, deleted_at: null },
+      { id: PA_OLD, farm_id: FA_COPY, name: 'Lote Norte (copy)', ha_declared: 2.5, deleted_at: '2026-11-26T00:00:00Z' },
+      { id: PB1, farm_id: FB, name: 'Otra', ha_declared: 1, deleted_at: null },
+    ],
+    // the Supabase view already converts [lat, lon] → closed [lon, lat] rings and hides deleted parcels
+    v_parcels_geojson: [
+      { id: PA1, farm_id: FA, name: 'Lote Norte', kind: 'normal', ha_declared: 2.5, ha_measured: 2.41, eudr_status: 'free', geojson: { type: 'Polygon', coordinates: [ring] } },
+      { id: PB1, farm_id: FB, name: 'Otra', kind: 'ppm', ha_declared: 1, ha_measured: null, eudr_status: 'pending', geojson: null },
+    ],
+    // (user, phone farm number) → shared farm
+    legacy_map: [
+      { user_id: U1, kind: 'finca', legacy_id: 'F008', target: FA },
+      { user_id: U2, kind: 'finca', legacy_id: 'F008', target: FB },
+    ],
     records: [
-      // Two users, SAME farm_id "F008"
-      rec({ id: 'f1', user_id: U1, farm_id: 'F008', modulo: 'finca', data: { name: 'Finca Uno', type: 'cacao', country: 'Panama', region: 'Bocas', totalHa: 10 }, updated_at: '2026-02-01T00:00:00Z' }),
-      rec({ id: 'f1-old', user_id: U1, farm_id: 'F008', modulo: 'finca', data: { name: 'Finca Uno (OLD)', country: 'Panama', superseded_by: 'f1' }, updated_at: '2026-03-01T00:00:00Z' }),
-      rec({ id: 'f2', user_id: U2, farm_id: 'F008', modulo: 'finca', data: { name: 'Finca Dos', country: 'Nicaragua', totalHa: '4.5' } }),
-      // Parcel stored as [lat, lon], open ring
-      rec({ id: 'p1', user_id: U1, farm_id: 'F008', parcel_id: 'P1', modulo: 'parcela', data: { name: 'Lote Norte', ha: '2.5', ha_measured: 2.41, eudrStatus: 'compliant', geometry: [[9.1, -82.1], [9.1, -82.2], [9.2, -82.2]] } }),
-      rec({ id: 'p1-old', user_id: U1, farm_id: 'F008', parcel_id: 'P1', modulo: 'parcela', data: { name: 'Lote Norte OLD', geometry: [[0, 0], [0, 1], [1, 1]], superseded_by: 'p1' }, updated_at: '2026-05-01T00:00:00Z' }),
-      rec({ id: 'p2', user_id: U2, farm_id: 'F008', parcel_id: 'P1', modulo: 'parcela', data: { name: 'Otra', geometry: [[12, -86], [12, -86.1], [12.1, -86.1], [12, -86]] } }),
+      rec({ id: 'fin1', user_id: U1, farm_id: 'F008', farm_uuid: FA, modulo: 'finca', data: { name: 'Finca Uno' } }),
       // Emissions; e1-old is a corrected version and must be ignored
-      rec({ id: 'e1', user_id: U1, farm_id: 'F008', parcel_id: 'P1', modulo: 'emision', date: '2026-03-10', kg_co2e: 100, data: { activity: 'fertilizer', responsable: 'Juan Pérez', note: 'contact juan@example.com' } }),
-      rec({ id: 'e1-old', user_id: U1, farm_id: 'F008', parcel_id: 'P1', modulo: 'emision', date: '2026-03-10', kg_co2e: 999, data: { superseded_by: 'e1' } }),
-      rec({ id: 'e2', user_id: U2, farm_id: 'F008', parcel_id: 'P1', modulo: 'emision', date: '2026-04-12', kg_co2e: 50 }),
-      // Photo records carry kg_co2e = 0 in real data and must not count as emissions
-      rec({ id: 'ph1', user_id: U1, farm_id: 'F008', parcel_id: 'P1', modulo: 'foto', date: '2026-04-03', kg_co2e: 0, data: { gps: '9.1, -82.1', lat: 9.1, icon: '🌿', note: 'Test foto', ai_at: '2026-04-03T10:00:00Z' } }),
-      // A module that is not in the original spec list
-      rec({ id: 'eq1', user_id: U1, farm_id: 'F008', modulo: 'equipo', date: '2026-04-04' }),
-      // Biodiversity
-      rec({ id: 'b1', user_id: U1, farm_id: 'F008', parcel_id: 'P1', modulo: 'bio', date: '2026-04-01', photo_path: 'u1/bio 1.jpg' }),
-      rec({ id: 'b2', user_id: U2, farm_id: 'F008', modulo: 'bio', date: '2026-04-02' }),
-      // Field measures
-      rec({ id: 's1', user_id: U1, farm_id: 'F008', modulo: 'suelo', date: '2026-04-05' }),
-      rec({ id: 'l2', user_id: U2, farm_id: 'F008', modulo: 'lluvia', date: '2026-04-06' }),
+      rec({ id: 'e1', user_id: U1, farm_id: 'F008', farm_uuid: FA, parcel_id: 'P1', parcel_uuid: PA1, modulo: 'emision', date: '2026-03-10', kg_co2e: 100, data: { activity: 'fertilizer', responsable: 'Juan Pérez', note: 'contact juan@example.com' } }),
+      rec({ id: 'e1-old', user_id: U1, farm_id: 'F008', farm_uuid: FA, parcel_uuid: PA1, modulo: 'emision', date: '2026-03-10', kg_co2e: 999, data: { superseded_by: 'e1' } }),
+      // still points at the merged copy → must count for FA
+      rec({ id: 'e3', user_id: U1, farm_id: 'F008', farm_uuid: FA_COPY, modulo: 'emision', date: '2026-03-20', kg_co2e: 10 }),
+      // U2 uses the same phone farm number F008 for a different farm
+      rec({ id: 'e2', user_id: U2, farm_id: 'F008', farm_uuid: FB, parcel_uuid: PB1, modulo: 'emision', date: '2026-04-12', kg_co2e: 50 }),
+      // old photo record without farm_uuid → attributed to FA through legacy_map; kg_co2e = 0 is not an emission
+      rec({ id: 'ph1', user_id: U1, farm_id: 'F008', modulo: 'foto', date: '2026-04-03', kg_co2e: 0, data: { gps: '9.1, -82.1', lat: 9.1, icon: '🌿', note: 'Test foto', ai_at: '2026-04-03T10:00:00Z' } }),
+      rec({ id: 'b1', user_id: U1, farm_id: 'F008', farm_uuid: FA, parcel_uuid: PA1, modulo: 'bio', date: '2026-04-01', photo_path: 'u1/bio 1.jpg' }),
+      rec({ id: 'b2', user_id: U2, farm_id: 'F008', farm_uuid: FB, modulo: 'bio', date: '2026-04-02' }),
+      rec({ id: 's1', user_id: U1, farm_id: 'F008', farm_uuid: FA, modulo: 'suelo', date: '2026-04-05' }),
+      rec({ id: 'l2', user_id: U2, farm_id: 'F008', farm_uuid: FB, modulo: 'lluvia', date: '2026-04-06' }),
+      rec({ id: 'eq1', user_id: U1, farm_id: 'F008', farm_uuid: FA, modulo: 'equipo', date: '2026-04-04' }),
+      // cannot be attributed to any farm
+      rec({ id: 'x1', user_id: U3, farm_id: 'F099', modulo: 'xoco', date: '2026-04-07' }),
     ],
     v_gases: [
-      { id: 'e1', org_id: 'org1', farm_id: 'F008', parcel_id: 'P1', date: '2026-03-10', modulo: 'emision', ch4_kg: 1, n2o_kg: 0.1, kg_co2e: 100, gwp_basis: 'AR6' },
-      { id: 'e2', org_id: 'org1', farm_id: 'F008', parcel_id: 'P1', date: '2026-04-12', modulo: 'emision', ch4_kg: 2, n2o_kg: 0, kg_co2e: 50, gwp_basis: 'AR6' },
+      { id: 'e1', farm_id: 'F008', parcel_id: 'P1', date: '2026-03-10', modulo: 'emision', ch4_kg: 1, n2o_kg: 0.1, kg_co2e: 100, gwp_basis: 'AR6' },
+      { id: 'e3', farm_id: 'F008', parcel_id: null, date: '2026-03-20', modulo: 'emision', ch4_kg: 0, n2o_kg: 0, kg_co2e: 10, gwp_basis: 'AR6' },
+      { id: 'e2', farm_id: 'F008', parcel_id: null, date: '2026-04-12', modulo: 'emision', ch4_kg: 2, n2o_kg: 0, kg_co2e: 50, gwp_basis: 'AR6' },
     ],
     v_emissions: [
-      { org_id: 'org1', farm_id: 'F008', sector: 'cacao', month: '2026-03-01', modulo: 'emision', kg_co2e: 100, n: 1 },
+      { org_id: 'org1', farm_id: 'F008', sector: 'cacao', month: '2026-03-01', modulo: 'emision', kg_co2e: 110, n: 2 },
       { org_id: 'org1', farm_id: 'F008', sector: 'cacao', month: '2026-04-01', modulo: 'emision', kg_co2e: 50, n: 1 },
       // same org/month/sector/modulo from another farm → must be merged, not listed twice
       { org_id: 'org1', farm_id: 'F009', sector: 'cacao', month: '2026-04-01', modulo: 'emision', kg_co2e: 25, n: 2 },
       { org_id: 'org1', farm_id: 'F008', sector: 'cacao', month: '2026-04-01', modulo: 'foto', kg_co2e: 0, n: 5 },
     ],
     v_observations: [
-      { id: 'b1', org_id: 'org1', farm_id: 'F008', parcel_id: 'P1', date: '2026-04-01', lat: 9.1, lon: -82.1, earth_bric_id: null, species: 'Ara macao', grp: 'aves', confidence: 'high', photo_sha256: 'x', photo_path: 'u1/bio 1.jpg' },
-      { id: 'b2', org_id: 'org1', farm_id: 'F008', parcel_id: null, date: '2026-04-02', lat: 12, lon: -86, earth_bric_id: null, species: 'Bradypus variegatus', grp: 'mammalia', confidence: 'medium', photo_sha256: null, photo_path: null },
+      { id: 'b1', farm_id: 'F008', parcel_id: 'P1', date: '2026-04-01', lat: 9.1, lon: -82.1, earth_bric_id: null, species: 'Ara macao', grp: 'aves', confidence: 'high', photo_path: 'u1/bio 1.jpg' },
+      { id: 'b2', farm_id: 'F008', parcel_id: null, date: '2026-04-02', lat: 12, lon: -86, earth_bric_id: null, species: 'Bradypus variegatus', grp: 'mammalia', confidence: 'medium', photo_path: null },
     ],
     v_species_ai: [
-      { id: 'b1', org_id: 'org1', farm_id: 'F008', parcel_id: 'P1', date: '2026-04-01', lat: 9.1, lon: -82.1, earth_bric_id: null, modulo: 'bio', ai_status: 'done', species_ai: 'Ara macao', score_ai: 0.93, source_ai: 'model', species_used: 'Ara macao', confirmed: true, gbif_status: 'ACCEPTED', gbif_n_50km: 120, photo_path: 'u1/bio 1.jpg' },
+      { id: 'b1', farm_id: 'F008', parcel_id: 'P1', date: '2026-04-01', modulo: 'bio', ai_status: 'done', species_ai: 'Ara macao', score_ai: 0.93, source_ai: 'model', species_used: 'Ara macao', confirmed: true, gbif_status: 'ACCEPTED', gbif_n_50km: 120, photo_path: 'u1/bio 1.jpg' },
     ],
     v_field_measures: [
-      { id: 's1', org_id: 'org1', farm_id: 'F008', parcel_id: null, date: '2026-04-05', modulo: 'suelo', soil_texture: 'franco', earthworms_n: 5, media_paths: ['a.jpg', 'b.mp4'], photo_path: null, alert: null },
-      { id: 'l2', org_id: 'org1', farm_id: 'F008', parcel_id: null, date: '2026-04-06', modulo: 'lluvia', rain_mm: 12, rain_openmeteo_mm: 10, media_paths: [], photo_path: null, alert: null },
+      { id: 's1', farm_id: 'F008', parcel_id: null, date: '2026-04-05', modulo: 'suelo', soil_texture: 'franco', earthworms_n: 5, media_paths: ['a.jpg', 'b.mp4'], photo_path: null, alert: null },
+      { id: 'l2', farm_id: 'F008', parcel_id: null, date: '2026-04-06', modulo: 'lluvia', rain_mm: 12, rain_openmeteo_mm: 10, media_paths: [], photo_path: null, alert: null },
     ],
     profiles: [{ id: U1, email: 'secret@example.com', full_name: 'Secret Person', role: 'integracion' }],
   }
@@ -119,28 +147,65 @@ function getPath(row: Row, expr: string): any {
   return v === undefined ? null : v
 }
 
+const unquote = (s: string) => (s.startsWith('"') && s.endsWith('"') ? s.slice(1, -1).replace(/\\(.)/g, '$1') : s)
+
+/** Split on commas at nesting depth 0, respecting "quoted" values. */
+function splitTop(s: string): string[] {
+  const out: string[] = []
+  let depth = 0, inQ = false, cur = ''
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]
+    if (inQ) {
+      cur += ch
+      if (ch === '\\') cur += s[++i]
+      else if (ch === '"') inQ = false
+      continue
+    }
+    if (ch === '"') inQ = true
+    else if (ch === '(') depth++
+    else if (ch === ')') depth--
+    else if (ch === ',' && depth === 0) {
+      out.push(cur)
+      cur = ''
+      continue
+    }
+    cur += ch
+  }
+  if (cur) out.push(cur)
+  return out
+}
+
 function matches(row: Row, col: string, op: string): boolean {
+  if (op.startsWith('not.')) return !matches(row, col, op.slice(4))
   const v = getPath(row, col)
   if (op === 'is.null') return v === null || v === undefined
-  if (op === 'not.is.null') return v !== null && v !== undefined
   const [kind, ...rest] = op.split('.')
-  const arg = rest.join('.')
+  const arg = unquote(rest.join('.'))
   switch (kind) {
     case 'eq':
-      return v !== null && String(v) === arg
+      return v !== null && v !== undefined && String(v) === arg
     case 'neq': // SQL semantics: NULL <> x is not true
       return v !== null && v !== undefined && String(v) !== arg
     case 'gte':
       return v !== null && String(v) >= arg
     case 'lte':
       return v !== null && String(v) <= arg
-    case 'in': {
-      const items = [...arg.slice(1, -1).matchAll(/"((?:[^"\\]|\\.)*)"|([^,]+)/g)].map((m) => (m[1] ?? m[2]).replace(/\\(.)/g, '$1'))
-      return items.includes(String(v))
-    }
+    case 'in':
+      return v !== null && v !== undefined && splitTop(arg.slice(1, -1)).map(unquote).includes(String(v))
     default:
       throw new Error(`fake: unsupported operator ${op}`)
   }
+}
+
+/** One condition of a logic tree: `col.op.value` or `and(...)` / `or(...)`. */
+function evalCond(row: Row, cond: string): boolean {
+  const logic = cond.match(/^(and|or)\((.*)\)$/s)
+  if (logic) {
+    const parts = splitTop(logic[2]).map((c) => evalCond(row, c))
+    return logic[1] === 'and' ? parts.every(Boolean) : parts.some(Boolean)
+  }
+  const dot = cond.indexOf('.')
+  return matches(row, cond.slice(0, dot), cond.slice(dot + 1))
 }
 
 function project(row: Row, selectExpr: string): Row {
@@ -192,7 +257,10 @@ async function fakeFetch(input: string | URL | Request, init: RequestInit = {}):
   const reserved = new Set(['select', 'limit', 'offset', 'order'])
   for (const key of new Set(url.searchParams.keys())) {
     if (reserved.has(key)) continue
-    for (const op of url.searchParams.getAll(key)) rows = rows.filter((r) => matches(r, key, op))
+    for (const op of url.searchParams.getAll(key)) {
+      if (key === 'or' || key === 'and') rows = rows.filter((r) => evalCond(r, `${key}${op}`))
+      else rows = rows.filter((r) => matches(r, key, op))
+    }
   }
   const order = url.searchParams.get('order')
   if (order) {
@@ -242,85 +310,113 @@ async function call(name: string, args: Record<string, unknown> = {}) {
   return { isError: !!res.isError, text, data: res.isError ? null : JSON.parse(text) }
 }
 
+const ids = (rows: Row[]) => rows.map((r) => r.id).sort()
+
 // ------------------------------------------------------------------ tests
 
-test('eledger_farms: one entry per (user, farm_id), current version, parcel counts', async () => {
-  const { data, isError } = await call('eledger_farms')
-  assert.equal(isError, false)
-  assert.equal(data.count, 2)
-  const byKey = Object.fromEntries(data.farms.map((f: Row) => [f.farm_key, f]))
-  assert.equal(byKey[K1].name, 'Finca Uno')
-  assert.equal(byKey[K1].total_ha, 10)
-  assert.equal(byKey[K1].parcel_count, 1)
-  assert.equal(byKey[K2].name, 'Finca Dos')
-  assert.equal(byKey[K2].total_ha, 4.5)
-  assert.ok(!JSON.stringify(data).includes(U1), 'raw user_id must not leak')
+test('eledger_farms: one row per shared farm, merged copies hidden, stats rolled up', async () => {
+  const { data, isError, text } = await call('eledger_farms')
+  assert.equal(isError, false, text)
+  assert.deepEqual(data.farms.map((f: Row) => f.farm).sort(), [FA, FB, FC, FC2].sort())
+  const a = data.farms.find((f: Row) => f.farm === FA)
+  assert.equal(a.name, 'Finca Uno')
+  assert.equal(a.organization, 'Xoco Gourmet')
+  assert.equal(a.type, 'individual')
+  assert.equal(a.parcels, 1) // the merged copy's parcel is deleted
+  assert.equal(a.ha_declared, 2.5)
+  // e1, e3 (on the merged copy), ph1 (legacy_map), b1, s1, eq1 — not e1-old (superseded) or fin1 (master data)
+  assert.equal(a.records, 6)
+  assert.equal(data.farms.find((f: Row) => f.farm === FB).records, 3)
+  assert.equal(data.records_without_farm, 1) // x1
+  assert.deepEqual(data.possible_duplicates, [{ name: 'Finca Tres', farms: [FC, FC2] }])
+  for (const u of [U1, U2, U3]) assert.ok(!text.includes(u), 'raw user_id must not leak')
 })
 
 test('superseded records are excluded everywhere', async () => {
-  const farms = await call('eledger_farms')
-  assert.ok(!farms.text.includes('OLD'))
-  const recs = await call('eledger_records', { farm: K1, modulo: 'emision' })
-  assert.deepEqual(recs.data.records.map((r: Row) => r.id), ['e1'])
-  const em = await call('eledger_emissions', { farm: K1 })
-  assert.equal(em.data.total.kg_co2e, 100) // not 100 + 999
-  const parcels = await call('eledger_parcels', { farm: K1 })
-  assert.equal(parcels.data.geojson.features[0].properties.name, 'Lote Norte')
+  const recs = await call('eledger_records', { farm: FA, modulo: 'emision' })
+  assert.deepEqual(ids(recs.data.records), ['e1', 'e3'])
+  const em = await call('eledger_emissions', { farm: FA })
+  assert.equal(em.data.total.kg_co2e, 110) // not + 999
   for (const c of state.restCalls.filter((c) => c.table === 'records')) {
-    if (c.params.has('id')) continue // id lookups are exact
+    if (c.params.has('id')) continue // exact id lookups
     assert.equal(c.params.get('data->>superseded_by'), 'is.null', `records query without superseded filter: ${c.params}`)
   }
 })
 
-test('eledger_parcels: [lat, lon] becomes closed GeoJSON ring of [lon, lat]', async () => {
-  const { data } = await call('eledger_parcels', { farm: K1 })
+test('eledger_parcels: GeoJSON per shared farm; a merged copy id resolves to the kept farm', async () => {
+  const { data, isError, text } = await call('eledger_parcels', { farm: FA_COPY })
+  assert.equal(isError, false, text)
+  assert.equal(data.farm, FA)
   assert.equal(data.parcel_count, 1)
   const f = data.geojson.features[0]
-  assert.equal(f.geometry.type, 'Polygon')
-  assert.deepEqual(f.geometry.coordinates[0], [
-    [-82.1, 9.1],
-    [-82.2, 9.1],
-    [-82.2, 9.2],
-    [-82.1, 9.1],
-  ])
-  assert.deepEqual(f.properties, { parcel_id: 'P1', name: 'Lote Norte', ha: 2.5, ha_measured: 2.41, eudr_status: 'compliant' })
+  assert.equal(f.id, PA1)
+  assert.deepEqual(f.geometry.coordinates[0][0], [-82.1, 9.1])
+  assert.deepEqual(f.properties, { parcel: PA1, name: 'Lote Norte', kind: 'normal', ha_declared: 2.5, ha_measured: 2.41, eudr_status: 'free' })
+  const b = await call('eledger_parcels', { farm: FB })
+  assert.equal(b.data.parcels_without_valid_geometry, 1)
+  assert.equal(b.data.geojson.features[0].geometry, null)
 })
 
-test('parcelGeometryToGeoJSON: already-closed ring is not double-closed; junk is rejected', () => {
-  const g = parcelGeometryToGeoJSON([[12, -86], [12, -86.1], [12.1, -86.1], [12, -86]])!
-  assert.equal(g.coordinates[0].length, 4)
-  assert.equal(parcelGeometryToGeoJSON([[1, 2], [3, 4]]), null)
-  assert.equal(parcelGeometryToGeoJSON('nope'), null)
-  assert.equal(parcelGeometryToGeoJSON([[1, 2], [3, 'x'], [5, 6]]), null)
-})
-
-test('two users with the same farm_id are never merged', async () => {
+test('two users with the same phone farm number are never merged', async () => {
   const ambiguous = await call('eledger_parcels', { farm: 'F008' })
   assert.equal(ambiguous.isError, true)
-  assert.ok(ambiguous.text.includes(K1) && ambiguous.text.includes(K2), ambiguous.text)
-
-  const p2 = await call('eledger_parcels', { farm: K2 })
-  assert.equal(p2.data.geojson.features[0].properties.name, 'Otra')
+  assert.ok(ambiguous.text.includes(FA) && ambiguous.text.includes(FB), ambiguous.text)
 
   const em = await call('eledger_emissions', { group_by: 'farm' })
   const groups = Object.fromEntries(em.data.groups.map((g: Row) => [g.key, g]))
-  assert.equal(groups[K1].kg_co2e, 100)
-  assert.equal(groups[K1].ch4_kg, 1)
-  assert.equal(groups[K2].kg_co2e, 50)
-  assert.equal(em.data.total.kg_co2e, 150)
+  assert.equal(groups[FA].kg_co2e, 110)
+  assert.equal(groups[FA].farm_name, 'Finca Uno')
+  assert.equal(groups[FA].ch4_kg, 1)
+  assert.equal(groups[FB].kg_co2e, 50)
+  assert.equal(em.data.total.kg_co2e, 160)
 
-  const sp = await call('eledger_species', { farm: K1 })
+  const sp = await call('eledger_species', { farm: FA })
   assert.deepEqual(sp.data.observations.by_species.map((s: Row) => s.species), ['Ara macao'])
-  assert.equal(sp.data.observations.recent[0].farm_key, K1)
+  assert.equal(sp.data.observations.recent[0].farm, FA)
+  assert.equal(sp.data.observations.recent[0].parcel, PA1)
   assert.equal(sp.data.ai_identifications.confirmed, 1)
 
-  const fm = await call('eledger_field_measures', { farm: K2 })
+  const fm = await call('eledger_field_measures', { farm: FB })
   assert.deepEqual(Object.keys(fm.data.summary), ['lluvia'])
-  assert.equal((fm.data.summary as Row).lluvia.rain_mm_total, 12)
+  assert.equal(fm.data.summary.lluvia.rain_mm_total, 12)
 
   const all = await call('eledger_species', { source: 'observations' })
-  const keys = all.data.observations.recent.map((r: Row) => r.farm_key).sort()
-  assert.deepEqual(keys, [K1, K2].sort())
+  assert.deepEqual(all.data.observations.recent.map((r: Row) => r.farm).sort(), [FA, FB].sort())
+})
+
+test('farm references: name, old farm_key and ambiguous names', async () => {
+  const byName = await call('eledger_records', { farm: 'finca uno', modulo: 'bio' })
+  assert.equal(byName.data.farm, FA)
+  assert.deepEqual(ids(byName.data.records), ['b1'])
+
+  const legacy = await call('eledger_parcels', { farm: `${userHash(U2)}:F008` })
+  assert.equal(legacy.data.farm, FB)
+
+  const dup = await call('eledger_parcels', { farm: 'Finca Tres' })
+  assert.equal(dup.isError, true)
+  assert.match(dup.text, /2 farms are named "Finca Tres"/)
+  assert.ok(dup.text.includes(FC) && dup.text.includes(FC2))
+
+  const none = await call('eledger_parcels', { farm: 'Nowhere' })
+  assert.equal(none.isError, true)
+})
+
+test('old records without farm_uuid are attributed through legacy_map', async () => {
+  const { data } = await call('eledger_records', { farm: FA, modulo: 'foto' })
+  assert.deepEqual(ids(data.records), ['ph1'])
+  assert.equal(data.records[0].farm, FA)
+  const any = await call('eledger_records', { modulo: 'foto' })
+  assert.equal(any.data.records[0].farm, FA)
+  assert.equal(any.data.records[0].farm_name, 'Finca Uno')
+})
+
+test('parcel filter by parcel id (uuid) works without farm; phone parcel number needs farm', async () => {
+  const { data } = await call('eledger_records', { parcel: PA1, modulo: 'emision' })
+  assert.deepEqual(ids(data.records), ['e1'])
+  const bad = await call('eledger_records', { parcel: 'P1' })
+  assert.equal(bad.isError, true)
+  const ok = await call('eledger_records', { farm: FA, parcel: 'P1' })
+  assert.deepEqual(ids(ok.data.records), ['e1'])
 })
 
 test('expired access token is refreshed via refresh_token', async () => {
@@ -336,7 +432,7 @@ test('token rejected server-side (401) triggers one re-auth and retry', async ()
   state.validTokens.clear() // server revokes/expires every token
   const { isError, data } = await call('eledger_farms')
   assert.equal(isError, false)
-  assert.equal(data.count, 2)
+  assert.equal(data.count, 4)
 })
 
 test('failed refresh falls back to password login', async () => {
@@ -345,7 +441,7 @@ test('failed refresh falls back to password login', async () => {
   await call('eledger_farms')
   const { isError } = await call('eledger_farms')
   assert.equal(isError, false)
-  assert.deepEqual(state.grants.slice(-2), ['refresh_token', 'password'])
+  assert.ok(state.grants.slice(1).includes('refresh_token') && state.grants.lastIndexOf('password') > state.grants.indexOf('refresh_token'))
 })
 
 test('errors become tool errors, not crashes', async () => {
@@ -362,15 +458,12 @@ test('errors become tool errors, not crashes', async () => {
   assert.ok(!badLogin.text.includes('wrong'), 'password must not appear in errors')
 
   process.env.ELEDGER_SUPABASE_PASSWORD = 'pw'
-  const parcelOnly = await call('eledger_records', { parcel: 'P1' })
-  assert.equal(parcelOnly.isError, true)
-
   const tooMany = await call('eledger_records', { limit: 500 })
   assert.equal(tooMany.isError, true)
 })
 
 test('eledger_records: summary hides personal data, profiles never queried', async () => {
-  const { data } = await call('eledger_records', { farm: K1, modulo: 'emision' })
+  const { data } = await call('eledger_records', { farm: FA, modulo: 'emision', parcel: PA1 })
   const r = data.records[0]
   assert.equal(r.recorded_by, 'XX')
   assert.equal(r.summary.activity, 'fertilizer')
@@ -380,24 +473,23 @@ test('eledger_records: summary hides personal data, profiles never queried', asy
   assert.deepEqual(summarizeData({ email: 'a@b.c', telefono: '123', name: 'Lote', n: 3 }), { name: 'Lote', n: 3 })
 })
 
-test('eledger_emissions: org_month uses v_emissions with month filter', async () => {
+test('eledger_emissions: org_month uses v_emissions, merged per month, zero rows dropped', async () => {
   const { data } = await call('eledger_emissions', { group_by: 'org_month', from: '2026-04-01' })
-  assert.equal(data.rows.length, 1, JSON.stringify(data.rows)) // F008+F009 merged, zero-kg foto row dropped
+  assert.equal(data.rows.length, 1, JSON.stringify(data.rows))
   assert.deepEqual(data.rows[0], { org_id: 'org1', month: '2026-04', sector: 'cacao', modulo: 'emision', kg_co2e: 75, n: 3 })
-  assert.equal(data.total_kg_co2e, 75)
 })
 
 test('eledger_emissions: zero-kg records (photos) are not counted', async () => {
-  const { data } = await call('eledger_emissions', { farm: K1, group_by: 'modulo' })
+  const { data } = await call('eledger_emissions', { farm: FA, group_by: 'modulo' })
   assert.deepEqual(data.groups.map((g: Row) => g.key), ['emision'])
-  assert.equal(data.total.records, 1)
+  assert.equal(data.total.records, 2)
 })
 
 test('eledger_records: accepts modules outside the original list; summary skips duplicated columns', async () => {
-  const eq = await call('eledger_records', { farm: K1, modulo: 'equipo' })
+  const eq = await call('eledger_records', { farm: FA, modulo: 'equipo' })
   assert.equal(eq.isError, false, eq.text)
-  assert.deepEqual(eq.data.records.map((r: Row) => r.id), ['eq1'])
-  const ph = await call('eledger_records', { farm: K1, modulo: 'foto' })
+  assert.deepEqual(ids(eq.data.records), ['eq1'])
+  const ph = await call('eledger_records', { farm: FA, modulo: 'foto' })
   assert.deepEqual(ph.data.records[0].summary, { note: 'Test foto' })
 })
 

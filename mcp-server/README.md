@@ -33,8 +33,8 @@ Field data from the ES Field App / E-Ledger (added 2026-11-16, **read-only**, Su
 
 | Tool | Source | Notes |
 |---|---|---|
-| `eledger_farms` | `records` (`modulo=finca`) | Fincas: name, country, region, ha, sector, parcel count. Returns a `farm_key` per farm |
-| `eledger_parcels` | `records` (`modulo=parcela`) | One finca's parcels as GeoJSON FeatureCollection ([lat,lon] → [lon,lat], closed ring) with ha, measured ha, EUDR status |
+| `eledger_farms` | `farms` + `parcels` + `records.farm_uuid` | One row per shared finca (app v9.6): id, name, organisation, country, region, sector, parcels, declared ha, record count. Lists `possible_duplicates` not merged yet |
+| `eledger_parcels` | `v_parcels_geojson` | One finca's shared parcels as GeoJSON FeatureCollection ([lon,lat], closed ring) with kind, declared/measured ha, EUDR status |
 | `eledger_records` | `records` | Registrations filtered by farm/parcel/modulo/date, limit ≤ 200, short summary per record |
 | `eledger_emissions` | `records` + `v_gases` (`v_emissions` for `group_by=org_month`) | kg CO2e + CH4/N2O, grouped by farm/parcel/month/modulo |
 | `eledger_species` | `v_observations` + `v_species_ai` | Species finds + AI identifications, per-species summary |
@@ -44,7 +44,8 @@ Field data from the ES Field App / E-Ledger (added 2026-11-16, **read-only**, Su
 E-Ledger rules baked into `src/lib/eledger.ts`:
 
 - Logs in with the app's integration account (profile role must be `integracion` — read everything, write nothing). Never the service_role key. Token cached, refreshed before expiry, re-auth once on 401.
-- `farm_id`/`parcel_id` are only unique **per user**, so farms are always keyed on `(user_id, farm_id)`, exposed as an opaque `farm_key` (`<8 hex of sha256(user_id)>:<farm_id>`) — raw user_ids are never returned. A bare `farm_id` shared by several users is rejected with the candidate farm_keys, never merged.
+- Farms/plots are the shared rows in `farms` / `parcels` (uuid ids; one per real farm since the app's v9.6 `dedupe_96`). Records are tied to them by `records.farm_uuid` / `parcel_uuid`; a merged copy (`merged_into`) resolves to the kept farm. Old records without `farm_uuid` are attributed through `legacy_map` (user + phone farm number → farm). The phone's `farm_id` is only unique **per user**, so a bare "F008" used by several users is rejected with the candidate farm ids, never merged. `farm` also accepts a unique exact farm name. Raw user_ids are never returned.
+- This is the same model as the VPS mirror's `eledger.v_farms_shared` / `v_parcels_shared` (App repo `docs/gaian/`), read straight from Supabase — the MCP server never connects to the VPS Postgres.
 - Every `records` query filters `data->>superseded_by=is.null` (current versions only). The `v_*` views have no `user_id`, so per-farm results are scoped via `view.id = records.id`. `v_emissions` sums across users sharing a farm_id, so it is only used org-wide per month.
 - Only `GET` with explicit `select=` (plus the storage signing `POST`), pages ≤ 1000 rows, capped per tool with a `truncated` flag. Never reads `profiles`; `recorded_by` initials are the only person identifier, and record summaries drop email/phone/owner-style fields.
 
@@ -238,6 +239,12 @@ free-form now), photo records carry `kg_co2e = 0` (excluded from
 emissions), `v_emissions` is split per farm (merged per org/month). Not yet
 live-verified because the test data has none: non-zero emissions/CH4/N2O
 and `v_field_measures` rows — only covered by the fake-Supabase tests.
+**E-Ledger shared farms (2026-11-26):** `eledger_*` switched from the
+per-phone finca records to the app's shared `farms` / `parcels` tables and
+`records.farm_uuid` (app v9.6). Verified live: 22 farm rows = 10 real farms
+in 2-3 copies each, because the app team's `dedupe_96(true)` has not been
+run yet — `eledger_farms` reports them under `possible_duplicates` until it is.
+
 **Remaining phase 2:** Xoco-estate bboxes for sentinel/forsler beyond what
 already works, and Anders' longer source list (ESA, CarbonTrace).
 
