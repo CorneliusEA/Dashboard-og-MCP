@@ -2,29 +2,30 @@ import { z } from 'zod'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import {
   CURRENT,
+  FarmIndex,
   Params,
-  ResolvedFarm,
   compact,
   dateRange,
-  farmKey,
+  isUuid,
+  loadFarmIndex,
   num,
-  parcelGeometryToGeoJSON,
-  resolveFarm,
+  recordRefs,
+  resolveFarmRef,
   round,
   select,
   signPhotoUrl,
   summarizeData,
-  userIdsForRecords,
 } from '../lib/eledger.js'
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD')
 const farmArg = z
   .string()
   .min(1)
-  .describe(
-    'farm_key from eledger_farms (e.g. "ab12cd34:F008"). A bare farm_id also works if only one user has it — farm_ids are only unique per user.',
-  )
-const parcelArg = z.string().min(1).describe('parcel_id within the farm (requires farm)')
+  .describe('Farm id (uuid) from eledger_farms. An exact farm name also works when it is unique.')
+const parcelArg = z
+  .string()
+  .min(1)
+  .describe('Parcel id (uuid) from eledger_parcels; a phone parcel number (e.g. "P011-A") needs farm as well.')
 
 // Free-form on purpose: the app adds modules over time (e.g. `equipo` exists in
 // live data but not in the original spec), so an enum would block valid filters.
@@ -54,44 +55,47 @@ function safe<A>(fn: (args: A) => Promise<unknown>): (args: A) => Promise<ToolRe
   }
 }
 
-async function farmFilter(farm?: string, parcel?: string): Promise<{ resolved: ResolvedFarm | null; params: Params }> {
-  if (parcel && !farm) throw new Error('parcel requires farm (parcel_ids are only unique per user/farm)')
-  if (!farm) return { resolved: null, params: {} }
-  const resolved = await resolveFarm(farm)
-  return {
-    resolved,
-    params: {
-      farm_id: `eq.${resolved.farmId}`,
-      ...(parcel ? { parcel_id: `eq.${parcel}` } : {}),
-    },
-  }
+interface Scope {
+  farm: { id: string; name: string | null } | null
+  /** filters for `records` that select exactly this farm/parcel */
+  params: Params
 }
 
-/** Ids of current records belonging to one (user, farm[, parcel]) — used to scope views that lack user_id. */
-async function recordIdsForFarm(resolved: ResolvedFarm, parcel?: string) {
+function scopeFor(index: FarmIndex, farm?: string, parcel?: string): Scope {
+  if (parcel && !farm && !isUuid(parcel))
+    throw new Error('A phone parcel number needs farm as well (parcel numbers are only unique per user); or pass the parcel id from eledger_parcels')
+  const params: Params = {}
+  let resolved: Scope['farm'] = null
+  if (farm) {
+    resolved = resolveFarmRef(farm, index)
+    params.or = index.recordFilter(resolved.id)
+  }
+  if (parcel) {
+    if (isUuid(parcel)) params.parcel_uuid = `eq.${parcel}`
+    else params.parcel_id = `eq.${parcel}`
+  }
+  return { farm: resolved, params }
+}
+
+const scoped = (s: Scope) => !!(s.params.or || s.params.parcel_uuid || s.params.parcel_id)
+
+/** Ids of current records inside a farm/parcel scope — used to scope the v_* views, which lack farm_uuid. */
+async function recordIdsIn(scope: Scope) {
   const { rows, truncated } = await select<{ id: string }>(
     'records',
-    {
-      select: 'id',
-      user_id: `eq.${resolved.userId}`,
-      farm_id: `eq.${resolved.farmId}`,
-      ...(parcel ? { parcel_id: `eq.${parcel}` } : {}),
-      ...CURRENT,
-    },
+    { select: 'id', ...scope.params, ...CURRENT },
     MAX_AGG_ROWS,
   )
   return { ids: new Set(rows.map((r) => r.id)), truncated }
 }
 
-/** Add farm_key to output rows (views have no user_id, so look it up via records.id). */
-async function withFarmKeys<T extends { id: string; farm_id: string | null }>(
-  rows: T[],
-  resolved: ResolvedFarm | null,
-): Promise<(Omit<T, 'farm_id'> & { farm_key: string | null })[]> {
-  const users = resolved ? null : await userIdsForRecords(rows.map((r) => r.id))
-  return rows.map(({ farm_id, ...rest }) => {
-    const userId = resolved ? resolved.userId : users!.get(rest.id)
-    return { ...rest, farm_key: farm_id && userId ? farmKey(userId, farm_id) : null }
+/** Replace a view row's phone farm_id/parcel_id with the shared farm id + name and parcel id. */
+async function withFarms<T extends { id: string; farm_id?: string | null; parcel_id?: string | null }>(rows: T[], index: FarmIndex) {
+  const refs = await recordRefs(rows.map((r) => r.id))
+  return rows.map(({ farm_id, parcel_id, ...rest }) => {
+    const ref = refs.get(rest.id)
+    const farm = ref ? index.farmOf(ref) : null
+    return { ...rest, farm, farm_name: index.name(farm), parcel: ref?.parcel_uuid ?? parcel_id ?? null }
   })
 }
 
@@ -102,67 +106,83 @@ export function registerEledgerTools(server: McpServer) {
     {
       title: 'E-Ledger farms (fincas)',
       description:
-        'List fincas registered in the ES Field App / E-Ledger (Supabase, read-only): name, country, region, hectares, sector and parcel count. Each farm has a farm_key — use it as `farm` in the other eledger_* tools (farm_ids are only unique per user, so two farms can share "F008").',
+        'List the fincas in the ES Field App / E-Ledger (Supabase, read-only), one row per real farm: id, name, organisation, country, region, sector, parcel count, declared ha and number of field records. Use the farm id as `farm` in the other eledger_* tools. `possible_duplicates` lists farms with the same name that the app team has not merged yet — do not add those up as separate farms without checking.',
       inputSchema: {
         country: z.string().optional().describe('Only farms whose country matches (case-insensitive)'),
       },
     },
     safe(async ({ country }: { country?: string }) => {
-      const farms = await select<{
-        user_id: string
-        farm_id: string
-        sector: string | null
-        name: string | null
-        type: string | null
-        country: string | null
-        region: string | null
-        totalHa: string | null
-      }>(
-        'records',
-        {
-          select:
-            'user_id,farm_id,sector,name:data->>name,type:data->>type,country:data->>country,region:data->>region,totalHa:data->>totalHa',
-          modulo: 'eq.finca',
-          ...CURRENT,
-          order: 'updated_at.desc',
-        },
+      const index = await loadFarmIndex()
+      const orgs = await select<{ id: string; name: string | null }>('organizations', { select: 'id,name' }, 5_000)
+      const orgName = new Map(orgs.rows.map((o) => [o.id, o.name]))
+      const parcels = await select<{ farm_id: string; ha_declared: number | null }>(
+        'parcels',
+        { select: 'farm_id,ha_declared', deleted_at: 'is.null' },
         MAX_AGG_ROWS,
       )
-      const parcels = await select<{ user_id: string; farm_id: string; parcel_id: string }>(
+      const recs = await select<{ user_id: string | null; farm_id: string | null; farm_uuid: string | null }>(
         'records',
-        { select: 'user_id,farm_id,parcel_id', modulo: 'eq.parcela', ...CURRENT },
+        { select: 'user_id,farm_id,farm_uuid', modulo: 'not.in.(finca,parcela)', ...CURRENT },
         MAX_AGG_ROWS,
       )
-      const parcelSets = new Map<string, Set<string>>()
+
+      const stats = new Map<string, { parcels: number; ha: number; records: number }>()
+      const stat = (id: string) => {
+        const s = stats.get(id) ?? { parcels: 0, ha: 0, records: 0 }
+        stats.set(id, s)
+        return s
+      }
       for (const p of parcels.rows) {
-        const key = farmKey(p.user_id, p.farm_id)
-        if (!parcelSets.has(key)) parcelSets.set(key, new Set())
-        parcelSets.get(key)!.add(p.parcel_id)
+        const id = index.final(p.farm_id)
+        if (!id) continue
+        const s = stat(id)
+        s.parcels++
+        s.ha += num(p.ha_declared) ?? 0
+      }
+      let unattributed = 0
+      for (const r of recs.rows) {
+        const id = index.farmOf(r)
+        if (id) stat(id).records++
+        else unattributed++
       }
 
-      const seen = new Set<string>()
-      const out = []
-      for (const f of farms.rows) {
-        const key = farmKey(f.user_id, f.farm_id)
-        if (seen.has(key)) continue // newest version first; keep one per farm
-        seen.add(key)
-        if (country && (f.country ?? '').toLowerCase() !== country.toLowerCase()) continue
-        out.push(
-          compact({
-            farm_key: key,
-            farm_id: f.farm_id,
+      const active = index
+        .active()
+        .filter((f) => !country || (f.country ?? '').trim().toLowerCase() === country.trim().toLowerCase())
+      const farms = active
+        .map((f) => {
+          const s = stats.get(f.id)
+          return compact({
+            farm: f.id,
             name: f.name,
-            type: f.type,
-            country: f.country,
-            region: f.region,
-            total_ha: num(f.totalHa),
+            organization: f.org_id ? (orgName.get(f.org_id) ?? null) : null,
+            country: f.country?.trim() || null,
+            region: f.region?.trim() || null,
             sector: f.sector,
-            parcel_count: parcelSets.get(key)?.size ?? 0,
-          }),
-        )
+            type: f.type,
+            parcels: s?.parcels ?? 0,
+            ha_declared: round(s?.ha ?? 0, 2),
+            records: s?.records ?? 0,
+          })
+        })
+        .sort((a, b) => String(a.name ?? '').localeCompare(String(b.name ?? '')))
+
+      const byName = new Map<string, string[]>()
+      for (const f of active) {
+        const k = (f.name ?? '').trim().toLowerCase()
+        if (k) byName.set(k, [...(byName.get(k) ?? []), f.id])
       }
-      out.sort((a, b) => String(a.name ?? a.farm_id).localeCompare(String(b.name ?? b.farm_id)))
-      return { count: out.length, truncated: farms.truncated || parcels.truncated, farms: out }
+      const possible_duplicates = [...byName.values()]
+        .filter((ids) => ids.length > 1)
+        .map((ids) => ({ name: index.name(ids[0]), farms: ids }))
+
+      return {
+        count: farms.length,
+        truncated: parcels.truncated || recs.truncated,
+        ...(possible_duplicates.length ? { possible_duplicates } : {}),
+        ...(unattributed ? { records_without_farm: unattributed } : {}),
+        farms,
+      }
     }),
   )
 
@@ -172,54 +192,50 @@ export function registerEledgerTools(server: McpServer) {
     {
       title: 'E-Ledger parcels (GeoJSON)',
       description:
-        'Parcels of one finca as a GeoJSON FeatureCollection (polygons in [lon, lat]) with name, declared ha, measured ha and EUDR status.',
+        'Parcels of one finca as a GeoJSON FeatureCollection (polygons in [lon, lat]) with parcel id, name, kind (normal / ppm sample plot), declared ha, measured ha and EUDR status.',
       inputSchema: { farm: farmArg },
     },
     safe(async ({ farm }: { farm: string }) => {
-      const resolved = await resolveFarm(farm)
+      const index = await loadFarmIndex()
+      const resolved = resolveFarmRef(farm, index)
       const { rows, truncated } = await select<{
-        parcel_id: string
+        id: string
         name: string | null
-        ha: string | null
-        ha_measured: string | null
-        eudrStatus: string | null
-        geometry: unknown
+        kind: string | null
+        ha_declared: number | null
+        ha_measured: number | null
+        eudr_status: string | null
+        geojson: { type?: string; coordinates?: unknown } | null
       }>(
-        'records',
+        'v_parcels_geojson',
         {
-          select:
-            'parcel_id,name:data->>name,ha:data->>ha,ha_measured:data->>ha_measured,eudrStatus:data->>eudrStatus,geometry:data->geometry',
-          modulo: 'eq.parcela',
-          user_id: `eq.${resolved.userId}`,
-          farm_id: `eq.${resolved.farmId}`,
-          ...CURRENT,
-          order: 'updated_at.desc',
+          select: 'id,name,kind,ha_declared,ha_measured,eudr_status,geojson',
+          farm_id: `in.(${index.members(resolved.id).join(',')})`,
+          order: 'name.asc',
         },
         MAX_VIEW_ROWS,
       )
-      const seen = new Set<string>()
-      const features = []
       let withoutGeometry = 0
-      for (const p of rows) {
-        if (seen.has(p.parcel_id)) continue
-        seen.add(p.parcel_id)
-        const geometry = parcelGeometryToGeoJSON(p.geometry)
+      const features = rows.map((p) => {
+        const geometry = p.geojson?.type === 'Polygon' && Array.isArray(p.geojson.coordinates) ? p.geojson : null
         if (!geometry) withoutGeometry++
-        features.push({
+        return {
           type: 'Feature' as const,
-          id: p.parcel_id,
+          id: p.id,
           geometry,
           properties: compact({
-            parcel_id: p.parcel_id,
+            parcel: p.id,
             name: p.name,
-            ha: num(p.ha),
+            kind: p.kind,
+            ha_declared: num(p.ha_declared),
             ha_measured: num(p.ha_measured),
-            eudr_status: p.eudrStatus,
+            eudr_status: p.eudr_status,
           }),
-        })
-      }
+        }
+      })
       return {
-        farm_key: resolved.farmKey,
+        farm: resolved.id,
+        farm_name: resolved.name,
         parcel_count: features.length,
         parcels_without_valid_geometry: withoutGeometry,
         truncated,
@@ -246,13 +262,16 @@ export function registerEledgerTools(server: McpServer) {
     },
     safe(
       async (args: { farm?: string; parcel?: string; modulo?: string; from?: string; to?: string; limit?: number }) => {
-        const { resolved, params } = await farmFilter(args.farm, args.parcel)
+        const index = await loadFarmIndex()
+        const scope = scopeFor(index, args.farm, args.parcel)
         const { rows, truncated } = await select<{
           id: string
-          user_id: string
+          user_id: string | null
           recorded_by: string | null
           farm_id: string | null
+          farm_uuid: string | null
           parcel_id: string | null
+          parcel_uuid: string | null
           sector: string | null
           modulo: string
           date: string | null
@@ -266,9 +285,8 @@ export function registerEledgerTools(server: McpServer) {
           'records',
           {
             select:
-              'id,user_id,recorded_by,farm_id,parcel_id,sector,modulo,date,lat,lon,earth_bric_id,kg_co2e,photo_path,data',
-            ...params,
-            ...(resolved ? { user_id: `eq.${resolved.userId}` } : {}),
+              'id,user_id,recorded_by,farm_id,farm_uuid,parcel_id,parcel_uuid,sector,modulo,date,lat,lon,earth_bric_id,kg_co2e,photo_path,data',
+            ...scope.params,
             ...(args.modulo ? { modulo: `eq.${args.modulo}` } : {}),
             date: dateRange(args.from, args.to),
             ...CURRENT,
@@ -277,13 +295,16 @@ export function registerEledgerTools(server: McpServer) {
           args.limit ?? 50,
         )
         return {
+          ...(scope.farm ? { farm: scope.farm.id, farm_name: scope.farm.name } : {}),
           count: rows.length,
           truncated,
-          records: rows.map((r) =>
-            compact({
+          records: rows.map((r) => {
+            const farm = index.farmOf(r)
+            return compact({
               id: r.id,
-              farm_key: r.farm_id ? farmKey(r.user_id, r.farm_id) : null,
-              parcel_id: r.parcel_id,
+              farm,
+              farm_name: scope.farm ? null : index.name(farm),
+              parcel: r.parcel_uuid ?? r.parcel_id,
               modulo: r.modulo,
               date: r.date,
               recorded_by: r.recorded_by,
@@ -294,8 +315,8 @@ export function registerEledgerTools(server: McpServer) {
               kg_co2e: num(r.kg_co2e),
               has_photo: !!r.photo_path,
               summary: summarizeData(r.data),
-            }),
-          ),
+            })
+          }),
         }
       },
     ),
@@ -307,7 +328,7 @@ export function registerEledgerTools(server: McpServer) {
     {
       title: 'E-Ledger emissions (CO2e, CH4, N2O)',
       description:
-        'Emissions from E-Ledger field records: kg CO2e plus CH4/N2O kg, totalled and grouped by farm, parcel, month or modulo, optionally for one farm/parcel and a date range. Per-farm figures are keyed by (user, farm) so farms sharing a farm_id are never merged. group_by=org_month returns the org-level monthly view (v_emissions) instead.',
+        'Emissions from E-Ledger field records: kg CO2e plus CH4/N2O kg, totalled and grouped by farm, parcel, month or modulo, optionally for one farm/parcel and a date range. group_by=org_month returns the org-level monthly view (v_emissions) instead.',
       inputSchema: {
         farm: farmArg.optional(),
         parcel: parcelArg.optional(),
@@ -356,48 +377,49 @@ export function registerEledgerTools(server: McpServer) {
           }
         }
 
-        const { resolved, params } = await farmFilter(args.farm, args.parcel)
+        const index = await loadFarmIndex()
+        const scope = scopeFor(index, args.farm, args.parcel)
         const date = dateRange(args.from, args.to)
-        // records carries user_id → authoritative per-(user, farm) CO2e.
         const recs = await select<{
           id: string
-          user_id: string
+          user_id: string | null
           farm_id: string | null
+          farm_uuid: string | null
           parcel_id: string | null
+          parcel_uuid: string | null
           date: string | null
           modulo: string
           kg_co2e: number | null
         }>(
           'records',
           {
-            select: 'id,user_id,farm_id,parcel_id,date,modulo,kg_co2e',
+            select: 'id,user_id,farm_id,farm_uuid,parcel_id,parcel_uuid,date,modulo,kg_co2e',
             kg_co2e: 'neq.0', // excludes NULL too; photo/master-data records carry kg_co2e = 0
-            ...params,
-            ...(resolved ? { user_id: `eq.${resolved.userId}` } : {}),
+            ...scope.params,
             date,
             ...CURRENT,
           },
           MAX_AGG_ROWS,
         )
-        // v_gases has the CH4/N2O split but no user_id → join on id with the rows above.
+        // v_gases has the CH4/N2O split but no farm reference → join on id with the rows above.
         const gases = await select<{ id: string; ch4_kg: number | null; n2o_kg: number | null; gwp_basis: string | null }>(
           'v_gases',
-          { select: 'id,ch4_kg,n2o_kg,gwp_basis', ...params, date },
+          { select: 'id,ch4_kg,n2o_kg,gwp_basis', kg_co2e: 'neq.0', date },
           MAX_AGG_ROWS,
         )
         const gasById = new Map(gases.rows.map((g) => [g.id, g]))
 
         const keyOf = (r: (typeof recs.rows)[number]) => {
-          const fk = r.farm_id ? farmKey(r.user_id, r.farm_id) : '(no farm)'
+          const farm = index.farmOf(r) ?? '(no farm)'
           switch (groupBy) {
             case 'parcel':
-              return `${fk}/${r.parcel_id ?? '(no parcel)'}`
+              return `${farm}/${r.parcel_uuid ?? r.parcel_id ?? '(no parcel)'}`
             case 'month':
               return (r.date ?? '').slice(0, 7) || '(no date)'
             case 'modulo':
               return r.modulo
             default:
-              return fk
+              return farm
           }
         }
         const groups = new Map<string, { kg_co2e: number; ch4_kg: number; n2o_kg: number; records: number }>()
@@ -425,14 +447,18 @@ export function registerEledgerTools(server: McpServer) {
         })
         return {
           group_by: groupBy,
-          ...(resolved ? { farm_key: resolved.farmKey } : {}),
-          ...(args.parcel ? { parcel_id: args.parcel } : {}),
+          ...(scope.farm ? { farm: scope.farm.id, farm_name: scope.farm.name } : {}),
+          ...(args.parcel ? { parcel: args.parcel } : {}),
           period: { from: args.from ?? null, to: args.to ?? null },
           total: r3(total),
           gwp_basis: [...gwpBases],
           truncated: recs.truncated || gases.truncated,
           groups: [...groups.entries()]
-            .map(([key, v]) => ({ key, ...r3(v) }))
+            .map(([key, v]) => ({
+              key,
+              ...(groupBy === 'farm' || groupBy === 'parcel' ? { farm_name: index.name(key.split('/')[0]) } : {}),
+              ...r3(v),
+            }))
             .sort((a, b) => (groupBy === 'month' ? a.key.localeCompare(b.key) : b.kg_co2e - a.kg_co2e)),
         }
       },
@@ -457,13 +483,14 @@ export function registerEledgerTools(server: McpServer) {
     },
     safe(
       async (args: { farm?: string; parcel?: string; from?: string; to?: string; source?: string; limit?: number }) => {
-        const { resolved, params } = await farmFilter(args.farm, args.parcel)
-        const scope = resolved ? await recordIdsForFarm(resolved, args.parcel) : null
+        const index = await loadFarmIndex()
+        const scope = scopeFor(index, args.farm, args.parcel)
+        const inScope = scoped(scope) ? await recordIdsIn(scope) : null
         const source = args.source ?? 'both'
         const limit = args.limit ?? 50
-        const base: Params = { ...params, date: dateRange(args.from, args.to), order: 'date.desc.nullslast' }
-        const out: Record<string, unknown> = { ...(resolved ? { farm_key: resolved.farmKey } : {}) }
-        let truncated = scope?.truncated ?? false
+        const base: Params = { date: dateRange(args.from, args.to), order: 'date.desc.nullslast' }
+        const out: Record<string, unknown> = scope.farm ? { farm: scope.farm.id, farm_name: scope.farm.name } : {}
+        let truncated = inScope?.truncated ?? false
 
         if (source !== 'ai') {
           const obs = await select<{
@@ -484,7 +511,7 @@ export function registerEledgerTools(server: McpServer) {
             MAX_VIEW_ROWS,
           )
           truncated ||= obs.truncated
-          const rows = scope ? obs.rows.filter((r) => scope.ids.has(r.id)) : obs.rows
+          const rows = inScope ? obs.rows.filter((r) => inScope.ids.has(r.id)) : obs.rows
           const bySpecies = new Map<string, { species: string; grp: string | null; n: number; last_date: string | null }>()
           for (const r of rows) {
             const k = r.species ?? '(unknown)'
@@ -497,7 +524,7 @@ export function registerEledgerTools(server: McpServer) {
             total: rows.length,
             species_count: bySpecies.size,
             by_species: [...bySpecies.values()].sort((a, b) => b.n - a.n).map((s) => compact(s)),
-            recent: (await withFarmKeys(rows.slice(0, limit), resolved)).map(({ photo_path, ...r }) =>
+            recent: (await withFarms(rows.slice(0, limit), index)).map(({ photo_path, ...r }) =>
               compact({ ...r, has_photo: !!photo_path }),
             ),
           }
@@ -529,7 +556,7 @@ export function registerEledgerTools(server: McpServer) {
             MAX_VIEW_ROWS,
           )
           truncated ||= ai.truncated
-          const rows = scope ? ai.rows.filter((r) => scope.ids.has(r.id)) : ai.rows
+          const rows = inScope ? ai.rows.filter((r) => inScope.ids.has(r.id)) : ai.rows
           const bySpecies = new Map<string, { species: string; n: number; confirmed: number }>()
           for (const r of rows) {
             const k = r.species_used ?? r.species_ai ?? '(unidentified)'
@@ -542,7 +569,7 @@ export function registerEledgerTools(server: McpServer) {
             total: rows.length,
             confirmed: rows.filter((r) => r.confirmed).length,
             by_species: [...bySpecies.values()].sort((a, b) => b.n - a.n),
-            recent: (await withFarmKeys(rows.slice(0, limit), resolved)).map(({ photo_path, ...r }) =>
+            recent: (await withFarms(rows.slice(0, limit), index)).map(({ photo_path, ...r }) =>
               compact({ ...r, has_photo: !!photo_path }),
             ),
           }
@@ -570,21 +597,21 @@ export function registerEledgerTools(server: McpServer) {
     },
     safe(
       async (args: { farm?: string; parcel?: string; modulo?: string; from?: string; to?: string; limit?: number }) => {
-        const { resolved, params } = await farmFilter(args.farm, args.parcel)
-        const scope = resolved ? await recordIdsForFarm(resolved, args.parcel) : null
-        const fm = await select<Record<string, unknown> & { id: string; farm_id: string | null; modulo: string | null }>(
+        const index = await loadFarmIndex()
+        const scope = scopeFor(index, args.farm, args.parcel)
+        const inScope = scoped(scope) ? await recordIdsIn(scope) : null
+        const fm = await select<Record<string, unknown> & { id: string; farm_id: string | null; parcel_id: string | null; modulo: string | null }>(
           'v_field_measures',
           {
             select:
               'id,farm_id,parcel_id,date,lat,lon,earth_bric_id,modulo,activity_type,canopy_pct,soil_texture,soil_color,earthworms_n,water_type,flow_l_min,rain_mm,rain_openmeteo_mm,doc_type,alert,wx_temp_c,wx_rh,wx_hpa,wx_rain24_mm,wx_src,scale_ref,media_paths,photo_path',
-            ...params,
             ...(args.modulo ? { modulo: `eq.${args.modulo}` } : {}),
             date: dateRange(args.from, args.to),
             order: 'date.desc.nullslast',
           },
           MAX_VIEW_ROWS,
         )
-        const rows = scope ? fm.rows.filter((r) => scope.ids.has(r.id)) : fm.rows
+        const rows = inScope ? fm.rows.filter((r) => inScope.ids.has(r.id)) : fm.rows
 
         type Agg = { n: number; sums: Record<string, number>; counts: Record<string, number>; cats: Record<string, Record<string, number>> }
         const aggs = new Map<string, Agg>()
@@ -620,11 +647,11 @@ export function registerEledgerTools(server: McpServer) {
           summary[m] = s
         }
 
-        const limited = await withFarmKeys(rows.slice(0, args.limit ?? 50), resolved)
+        const limited = await withFarms(rows.slice(0, args.limit ?? 50), index)
         return {
-          ...(resolved ? { farm_key: resolved.farmKey } : {}),
+          ...(scope.farm ? { farm: scope.farm.id, farm_name: scope.farm.name } : {}),
           total: rows.length,
-          truncated: fm.truncated || (scope?.truncated ?? false),
+          truncated: fm.truncated || (inScope?.truncated ?? false),
           summary,
           recent: limited.map(({ media_paths, photo_path, ...r }) =>
             compact({
@@ -644,7 +671,7 @@ export function registerEledgerTools(server: McpServer) {
     {
       title: 'E-Ledger photo link',
       description:
-        "Temporary (1 hour) signed link to the photo of one E-Ledger record (record id from eledger_records, eledger_species or eledger_field_measures).",
+        'Temporary (1 hour) signed link to the photo of one E-Ledger record (record id from eledger_records, eledger_species or eledger_field_measures).',
       inputSchema: { record_id: z.string().min(1) },
     },
     safe(async ({ record_id }: { record_id: string }) => {
